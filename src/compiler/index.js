@@ -6,6 +6,12 @@ import {
 } from 'lodash';
 
 import stripBom from 'strip-bom';
+import { Compiler as LegacyTestFileCompiler } from 'testcafe-legacy-api';
+import hammerhead from 'testcafe-hammerhead';
+import EsNextTestFileCompiler from './test-file/formats/es-next/compiler';
+// import TypeScriptTestFileCompiler from './test-file/formats/typescript/compiler';
+// import CoffeeScriptTestFileCompiler from './test-file/formats/coffeescript/compiler';
+import RawTestFileCompiler from './test-file/formats/raw';
 import { readFile } from '../utils/promisified-functions';
 import { GeneralError } from '../errors/runtime';
 import { RUNTIME_ERRORS } from '../errors/types';
@@ -13,6 +19,14 @@ import { getTestFileCompilers, initTestFileCompilers } from './compilers';
 
 
 const SOURCE_CHUNK_LENGTH = 1000;
+
+const testFileCompilers = [
+    new LegacyTestFileCompiler(hammerhead.processScript),
+    new EsNextTestFileCompiler(),
+    // new TypeScriptTestFileCompiler(),
+    // new CoffeeScriptTestFileCompiler(),
+    new RawTestFileCompiler()
+];
 
 export default class Compiler {
     constructor (sources, options) {
@@ -22,7 +36,10 @@ export default class Compiler {
     }
 
     static getSupportedTestFileExtensions () {
-        return uniq(flattenDeep(getTestFileCompilers().map(compiler => compiler.getSupportedExtension())));
+        return uniq(testFileCompilers.reduce((acc, c) => {
+            acc.push(c.getSupportedExtension());
+            return acc;
+        }, []));
     }
 
     async _createTestFileInfo (filename) {

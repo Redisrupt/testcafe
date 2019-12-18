@@ -46,8 +46,10 @@ export default {
             global.setImmediate = this._createContextSwitchingFunctionHook(global.setImmediate, 1);
             process.nextTick    = this._createContextSwitchingFunctionHook(process.nextTick, 1);
 
-            global.Promise.prototype.then  = this._createContextSwitchingFunctionHook(global.Promise.prototype.then, 2);
-            global.Promise.prototype.catch = this._createContextSwitchingFunctionHook(global.Promise.prototype.catch, 1);
+            if (global.Promise) {
+                global.Promise.prototype.then  = this._createContextSwitchingFunctionHook(global.Promise.prototype.then, 2);
+                global.Promise.prototype.catch = this._createContextSwitchingFunctionHook(global.Promise.prototype.catch, 1);
+            }
 
             this.enabled = true;
         }

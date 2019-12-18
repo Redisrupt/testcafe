@@ -1,7 +1,7 @@
 import hammerhead from 'testcafe-hammerhead';
 import asyncToGenerator from '@babel/runtime/helpers/asyncToGenerator';
 import { noop } from 'lodash';
-import loadBabelLibs from './babel/load-libs';
+// import loadBabelLibs from './load-babel-libs';
 import { ClientFunctionAPIError } from '../errors/runtime';
 import { RUNTIME_ERRORS } from '../errors/types';
 import formatBabelProducedCode from './babel/format-babel-produced-code';
@@ -17,19 +17,43 @@ const ASYNC_TO_GENERATOR_OUTPUT_CODE = formatBabelProducedCode(asyncToGenerator(
 const CLIENT_FUNCTION_BODY_WRAPPER = code => `const func = (${code});`;
 const CLIENT_FUNCTION_WRAPPER      = ({ code, dependencies }) => `(function(){${dependencies} ${code} return func;})();`;
 
-function getBabelOptions () {
-    const { presetEnvForClientFunction, transformForOfAsArray } = loadBabelLibs();
+// function getBabelOptions () {
+//     const { presetFallback, transformForOfAsArray } = loadBabelLibs();
 
-    return Object.assign({}, BASE_BABEL_OPTIONS, {
-        presets: [{ plugins: [transformForOfAsArray] }, presetEnvForClientFunction]
-    });
-}
+//     return {
+//         presets:       [{ plugins: [transformForOfAsArray] }, presetFallback],
+//         sourceMaps:    false,
+//         retainLines:   true,
+//         ast:           false,
+//         babelrc:       false,
+//         highlightCode: false
+//     };
+// }
 
 function downgradeES (fnCode) {
+    // const { babel } = loadBabelLibs();
     const babel = require('@babel/core');
 
-    const opts     = getBabelOptions();
-    const compiled = babel.transform(fnCode, opts);
+    // const opts     = getBabelOptions();
+    const compiled = babel.transform(fnCode, {
+        sourceMaps:    false,
+        retainLines:   true,
+        ast:           false,
+        babelrc:       false,
+        highlightCode: false,
+        presets:       [
+            [
+                '@babel/preset-env',
+                {
+                    loose:   true,
+                    targets: {
+                        browsers: ['last 2 versions']
+                    },
+                },
+            ],
+            '@babel/preset-react',
+        ],
+    });
 
     return compiled.code
         .replace(USE_STRICT_RE, '')
