@@ -16,7 +16,16 @@ export default class Compiler {
     }
 
     static getSupportedTestFileExtensions () {
-        return uniq(getTestFileCompilers().map(compiler => compiler.getSupportedExtension()));
+        return uniq(testFileCompilers.reduce((acc, compiler) => {
+            let extensions = compiler.getSupportedExtension();
+            if (Array.isArray(extensions)) {
+                extensions.forEach(ext => acc.push(ext));
+            } else {
+                acc.push(extensions);
+            }
+
+            return acc;
+        }, []));
     }
 
     async _createTestFileInfo (filename) {
