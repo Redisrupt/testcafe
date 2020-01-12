@@ -53,6 +53,7 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
 
     _compileCode (code, filename) {
         const babel = require('@babel/core');
+        const isTS = /\.ts$/.test(filename);
         const opts = {
             filename:      filename,
             retainLines:   true,
@@ -70,11 +71,11 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
                         },
                     },
                 ],
-                '@babel/preset-typescript',
+                isTS ? '@babel/preset-typescript' : '@babel/preset-flow',
                 '@babel/preset-react',
             ],
             plugins: [
-                ['babel-plugin-module-resolver', {
+                ['module-resolver', {
                     'resolvePath': source => {
                         if (source === 'testcafe')
                             return APIBasedTestFileCompilerBase.EXPORTABLE_LIB_PATH;

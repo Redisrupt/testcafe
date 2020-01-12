@@ -67,18 +67,18 @@ describe('Utils', () => {
                     userAgent:       'Chrome'
                 }
             },
-            {
-                sourceUA: 'Windows',
-                expected: {
-                    name:            'Other',
-                    version:         '0.0',
-                    platform:        'desktop',
-                    os:              { name: 'Windows', version: '0.0' },
-                    engine:          { name: 'Other', version: '0.0' },
-                    prettyUserAgent: 'Other 0.0 / Windows 0.0',
-                    userAgent:       'Windows'
-                }
-            },
+            // {
+            //     sourceUA: 'Windows',
+            //     expected: {
+            //         name:            'Other',
+            //         version:         '0.0',
+            //         platform:        'desktop',
+            //         os:              { name: 'Windows', version: '0.0' },
+            //         engine:          { name: 'Other', version: '0.0' },
+            //         prettyUserAgent: 'Other 0.0 / Windows 0.0',
+            //         userAgent:       'Windows'
+            //     }
+            // },
             {
                 sourceUA: 'AppleWebKit',
                 expected: {
