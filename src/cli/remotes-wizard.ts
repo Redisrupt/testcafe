@@ -5,6 +5,7 @@ import promisifyEvent from 'promisify-event';
 import dedent from 'dedent';
 import BrowserConnection from '../browser/connection';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function (testCafe: any, remoteCount: number, showQRCode: boolean): Promise<BrowserConnection[]> {
     const connectionPromises = [];
 

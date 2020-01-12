@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import browserTools from 'testcafe-browser-tools';
 import OS from 'os-family';
 import { dirname } from 'path';

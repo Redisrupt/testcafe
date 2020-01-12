@@ -16,13 +16,15 @@ export default class Compiler {
     }
 
     static getSupportedTestFileExtensions () {
+        const testFileCompilers = getTestFileCompilers();
+
         return uniq(testFileCompilers.reduce((acc, compiler) => {
-            let extensions = compiler.getSupportedExtension();
-            if (Array.isArray(extensions)) {
+            const extensions = compiler.getSupportedExtension();
+
+            if (Array.isArray(extensions))
                 extensions.forEach(ext => acc.push(ext));
-            } else {
+            else
                 acc.push(extensions);
-            }
 
             return acc;
         }, []));

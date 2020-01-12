@@ -5,7 +5,7 @@ import EsNextTestFileCompiler from './test-file/formats/es-next/compiler';
 // import CoffeeScriptTestFileCompiler from './test-file/formats/coffeescript/compiler';
 import RawTestFileCompiler from './test-file/formats/raw';
 
-function createTestFileCompilers (options) {
+function createTestFileCompilers (/* options */) {
     return [
         new LegacyTestFileCompiler(hammerhead.processScript),
         new EsNextTestFileCompiler(),

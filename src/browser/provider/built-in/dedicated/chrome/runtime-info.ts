@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getFreePort } from 'endpoint-utils';
 import getConfig from './config';
 import createTempProfile from './create-temp-profile';
