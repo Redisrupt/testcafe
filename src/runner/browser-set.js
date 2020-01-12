@@ -6,7 +6,7 @@ import mapReverse from 'map-reverse';
 import { GeneralError } from '../errors/runtime';
 import { RUNTIME_ERRORS } from '../errors/types';
 
-const LOCAL_BROWSERS_READY_TIMEOUT  = 2 * 60 * 1000;
+const LOCAL_BROWSERS_READY_TIMEOUT  = 5 * 60 * 1000;
 const REMOTE_BROWSERS_READY_TIMEOUT = 6 * 60 * 1000;
 
 export default class BrowserSet extends EventEmitter {
