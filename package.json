@@ -2,7 +2,7 @@
   "name": "@redisrupt/testcafe",
   "description": "Automated browser testing for the modern web development stack.",
   "license": "MIT",
-  "version": "1.7.1",
+  "version": "1.7.1-reva.0",
   "author": {
     "name": "Developer Express Inc.",
     "url": "https://www.devexpress.com/"
@@ -50,8 +50,7 @@
   ],
   "scripts": {
     "test": "gulp travis",
-    "publish-please": "del-cli package-lock.json node_modules && npm i && publish-please",
-    "prepublishOnly": "publish-please guard"
+    "publish-please": "del-cli package-lock.json node_modules && npm i && publish-please"
   },
   "dependencies": {
     "@babel/cli": "^7.7.5",
