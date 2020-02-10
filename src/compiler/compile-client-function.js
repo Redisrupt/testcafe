@@ -49,6 +49,7 @@ function getBabelOptions () {
         retainLines:   true,
         ast:           false,
         babelrc:       false,
+        configFile:    false,
         highlightCode: false,
         presets:       [
             [
