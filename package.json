@@ -2,7 +2,7 @@
   "name": "@redisrupt/testcafe",
   "description": "Automated browser testing for the modern web development stack.",
   "license": "MIT",
-  "version": "1.7.1-reva.0",
+  "version": "1.7.1-reva.1",
   "author": {
     "name": "Developer Express Inc.",
     "url": "https://www.devexpress.com/"
