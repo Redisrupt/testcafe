@@ -111,7 +111,7 @@ const withRetries = ( fn, { retries = 3, delayBetweenRetries = 1000 } = {} ) =>
                 remainingRetries -= 1;
                 try {
                     if (remainingRetries === 0)
-                        console.log('>>> last attempt'); // eslint-disable-line no-console
+                        console.log('>>> REVA_RETRY_FAILED_TEST last attempt'); // eslint-disable-line no-console
 
                     p = fn({ remainingRetries }, ...args );
 
@@ -120,6 +120,8 @@ const withRetries = ( fn, { retries = 3, delayBetweenRetries = 1000 } = {} ) =>
 
                 }
                 catch ( err ) {
+                    console.log('>>> withRetries failed', err); // eslint-disable-line no-console
+                    console.log('>>> will we retry?', remainingRetries > 0); // eslint-disable-line no-console
                     res.sucesss = false;
                     res.error = err;
 
@@ -364,7 +366,7 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     // Test function execution
-    async _executeTestFn (phase, fn, storeError) {
+    async _executeTestFn (phase, fn, { storeError = true } = {}) {
         this.phase = phase;
 
         try {
@@ -382,7 +384,7 @@ export default class TestRun extends AsyncEventEmitter {
                 this.addError(err, screenshotPath);
                 return false;
             }
-            return true;
+            throw err;
         }
 
         return !this._addPendingPageErrorIfAny();
@@ -410,7 +412,7 @@ export default class TestRun extends AsyncEventEmitter {
 
     _doRun = async ({ remainingRetries = 0 } = {}) => {
         if (await this._runBeforeHook()) {
-            await this._executeTestFn(PHASE.inTest, this.test.fn, remainingRetries === 0);
+            await this._executeTestFn(PHASE.inTest, this.test.fn, { storeError: remainingRetries === 0 });
             await this._runAfterHook();
         }
     };
@@ -428,8 +430,11 @@ export default class TestRun extends AsyncEventEmitter {
 
         await this.emit('ready');
 
-        if (process.env.REVA_RETRY_FAILED_TEST) {
-            const fn = withRetries(({ remainingRetries }) => this._doRun(remainingRetries), { retries: 1 });
+        const REVA_RETRY_FAILED_TEST = process.env.REVA_RETRY_FAILED_TEST;
+
+        if (REVA_RETRY_FAILED_TEST) {
+            const retries = parseInt(REVA_RETRY_FAILED_TEST, 10) || 1;
+            const fn = withRetries(({ remainingRetries }) => this._doRun({ remainingRetries }), { retries });
 
             await fn();
         }
