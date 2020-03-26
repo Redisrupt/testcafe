@@ -63,6 +63,83 @@ const CHILD_WINDOW_READY_TIMEOUT      = 30 * 1000;
 
 const ALL_DRIVER_TASKS_ADDED_TO_QUEUE_EVENT = 'all-driver-tasks-added-to-queue';
 
+const deferred = () => {
+    let resolve;
+    let reject;
+
+    const promise = new Promise( ( resolver, rejector ) => {
+        resolve = resolver;
+        reject = rejector;
+    } );
+
+    promise.resolve = arg => resolve( arg );
+
+    promise.reject = arg => reject( arg );
+
+    return promise;
+};
+
+const sleep = ( timeout = 1000 ) => new Promise( resolve => setTimeout( resolve, timeout ) );
+
+const withRetries = ( fn, { retries = 3, delayBetweenRetries = 1000 } = {} ) =>
+    ( ...args ) => {
+        const dfd = deferred();
+        const res = {};
+
+        if ( typeof retries !== 'number' )
+            dfd.reject( new TypeError( '`retries` parameter must be a number' ) );
+
+
+        if ( retries === Infinity )
+            dfd.reject( new TypeError( '`retries` parameter must not be Infinity' ) );
+
+
+        let remainingRetries = retries + 1;
+
+        let p;
+        let aborted = false;
+
+        dfd.abort = () => {
+            aborted = true;
+            if (!p) return;
+            if (!p.abort) return;
+            p.abort();
+        };
+
+        ( async () => {
+            do {
+                remainingRetries -= 1;
+                try {
+                    if (remainingRetries === 0)
+                        console.log('>>> last attempt'); // eslint-disable-line no-console
+
+                    p = fn({ remainingRetries }, ...args );
+
+                    res.result = await p;
+                    res.success = true;
+
+                }
+                catch ( err ) {
+                    res.sucesss = false;
+                    res.error = err;
+
+                    if ( !aborted )
+                        await sleep( delayBetweenRetries );
+
+                }
+            } while ( !res.success && remainingRetries > 0 && !aborted );
+
+            if ( res.success )
+                dfd.resolve( res.result );
+            else
+                dfd.reject( res.error || new Error( `Maximum number of retries reached: ${retries}` ) );
+
+        } )();
+
+        return dfd;
+    };
+
+
 export default class TestRun extends AsyncEventEmitter {
     constructor (test, browserConnection, screenshotCapturer, globalWarningLog, opts) {
         super();
@@ -287,22 +364,25 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     // Test function execution
-    async _executeTestFn (phase, fn) {
+    async _executeTestFn (phase, fn, storeError) {
         this.phase = phase;
 
         try {
             await fn(this);
         }
         catch (err) {
-            let screenshotPath = null;
+            if (storeError) {
+                let screenshotPath = null;
 
-            const { screenshots } = this.opts;
+                const { screenshots } = this.opts;
 
-            if (screenshots && screenshots.takeOnFails)
-                screenshotPath = await this.executeCommand(new browserManipulationCommands.TakeScreenshotOnFailCommand());
+                if (screenshots && screenshots.takeOnFails)
+                    screenshotPath = await this.executeCommand(new browserManipulationCommands.TakeScreenshotOnFailCommand());
 
-            this.addError(err, screenshotPath);
-            return false;
+                this.addError(err, screenshotPath);
+                return false;
+            }
+            return true;
         }
 
         return !this._addPendingPageErrorIfAny();
@@ -328,6 +408,13 @@ export default class TestRun extends AsyncEventEmitter {
         return true;
     }
 
+    _doRun = async ({ remainingRetries = 0 } = {}) => {
+        if (await this._runBeforeHook()) {
+            await this._executeTestFn(PHASE.inTest, this.test.fn, remainingRetries === 0);
+            await this._runAfterHook();
+        }
+    };
+
     async start () {
         testRunTracker.activeTestRuns[this.session.id] = this;
 
@@ -341,10 +428,14 @@ export default class TestRun extends AsyncEventEmitter {
 
         await this.emit('ready');
 
-        if (await this._runBeforeHook()) {
-            await this._executeTestFn(PHASE.inTest, this.test.fn);
-            await this._runAfterHook();
+        if (process.env.REVA_RETRY_FAILED_TEST) {
+            const fn = withRetries(({ remainingRetries }) => this._doRun(remainingRetries), { retries: 1 });
+
+            await fn();
         }
+        else
+            await this._doRun();
+
 
         if (this.disconnected)
             return;
