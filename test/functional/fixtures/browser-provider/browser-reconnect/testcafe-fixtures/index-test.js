@@ -46,3 +46,26 @@ test('Should fail on 3 disconnects in one browser', async t => {
     await t.expect(counter[userAgent]).eql(1);
 });
 
+test('Should restart browser on timeout if the `closeBrowser` method hangs', async t => {
+    const userAgent = await getUserAgent();
+
+    counter[userAgent] = counter[userAgent] || 0;
+
+    counter[userAgent]++;
+
+    if (counter[userAgent] < 2) {
+        await hang();
+
+        throw new Error('browser has not restarted');
+    }
+
+    await t.expect(counter[userAgent]).eql(2);
+});
+
+test('Should log error on browser disconnect', async t => {
+    t.testRun.browserConnection.emit('disconnected', new Error('disconnected'));
+
+    setTimeout(() => {
+        t.testRun.browserConnection.emit('error', new Error('force error'));
+    }, 5000);
+});

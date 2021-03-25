@@ -21,6 +21,8 @@ const prepareReporters                 = require('../../lib/utils/prepare-report
 const { replaceLeadingSpacesWithNbsp } = require('../../lib/errors/test-run/utils');
 const createTempProfile                = require('../../lib/browser/provider/built-in/dedicated/chrome/create-temp-profile');
 const parseUserAgent                   = require('../../lib/utils/parse-user-agent');
+const diff                             = require('../../lib/utils/diff');
+
 
 const {
     buildChromeArgs,
@@ -39,6 +41,29 @@ describe('Utils', () => {
         expect(escapeUserAgent('Chrome 67.0.3396 / Windows 8.1.0.0')).eql('Chrome_67.0.3396_Windows_8.1.0.0');
     });
 
+    it('Diff', () => {
+        expect(diff(null, null)).eql({});
+        expect(diff(void 0, void 0)).eql({});
+        expect(diff(1, 2)).eql({});
+        expect(diff({ a: void 0 }, { b: void 0 })).eql({});
+        expect(diff({ a: null }, { b: null })).eql({});
+        expect(diff({ a: null }, { a: 1 })).eql({ a: 1 });
+        expect(diff({ a: 1 }, { a: 1 })).eql({});
+        expect(diff({ a: 1 }, { a: void 0 })).eql({ a: void 0 });
+        expect(diff({ a: 1 }, { a: null })).eql({ a: null });
+        expect(diff({ a: 1, b: 1 }, { a: 1, b: 1 })).eql({});
+        expect(diff({ a: 1, b: {} }, { a: 1, b: {} })).eql({});
+        expect(diff({ a: 1, b: { c: 3 } }, { a: 1, b: { c: 3 } })).eql({});
+        expect(diff({ a: 1, b: { c: { d: 4 } } }, { a: 1, b: { c: { d: 4 } } })).eql({});
+        expect(diff({ a: 0 }, { a: 1 })).eql({ a: 1 });
+        expect(diff({ a: 1 }, { a: 0 })).eql({ a: 0 });
+        expect(diff({ a: 1 }, { a: 2 })).eql({ a: 2 });
+        expect(diff({ a: 1, b: 1 }, { a: 1, b: 2 })).eql({ b: 2 });
+        expect(diff({ a: 1, b: { c: 3 } }, { a: 1, b: { c: 4 } })).eql({ b: { c: 4 } });
+        expect(diff({ a: 1, b: { c: 3 } }, { a: 2, b: { c: 4 } })).eql({ a: 2, b: { c: 4 } });
+        expect(diff({ a: 1, b: { c: { d: 4 } } }, { a: 1, b: { c: { d: 5 } } })).eql({ b: { c: { d: 5 } } });
+    });
+
     it('Parse user agent', () => {
         const expectedEmptyParsedUA = {
             name:            'Other',
@@ -54,42 +79,6 @@ describe('Utils', () => {
             {
                 sourceUA: '',
                 expected: expectedEmptyParsedUA
-            },
-            {
-                sourceUA: 'Chrome',
-                expected: {
-                    name:            'Chrome',
-                    version:         '0.0',
-                    platform:        'other',
-                    os:              { name: 'Other', version: '0.0' },
-                    engine:          { name: 'Other', version: '0.0' },
-                    prettyUserAgent: 'Chrome 0.0 / Other 0.0',
-                    userAgent:       'Chrome'
-                }
-            },
-            // {
-            //     sourceUA: 'Windows',
-            //     expected: {
-            //         name:            'Other',
-            //         version:         '0.0',
-            //         platform:        'desktop',
-            //         os:              { name: 'Windows', version: '0.0' },
-            //         engine:          { name: 'Other', version: '0.0' },
-            //         prettyUserAgent: 'Other 0.0 / Windows 0.0',
-            //         userAgent:       'Windows'
-            //     }
-            // },
-            {
-                sourceUA: 'AppleWebKit',
-                expected: {
-                    name:            'Safari',
-                    version:         '0.0',
-                    platform:        'other',
-                    os:              { name: 'Other', version: '0.0' },
-                    engine:          { name: 'WebKit', version: '0.0' },
-                    prettyUserAgent: 'Safari 0.0 / Other 0.0',
-                    userAgent:       'AppleWebKit'
-                }
             },
             {
                 sourceUA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36',
@@ -125,6 +114,18 @@ describe('Utils', () => {
                     engine:          { name: 'Blink', version: '0.0' },
                     prettyUserAgent: 'Chrome 67.0.3396.87 / Android 8.1.0',
                     userAgent:       'Mozilla/5.0 (Linux; Android 8.1.0; Android SDK built for x86 Build/OSM1.180201.026) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Mobile Safari/537.36'
+                }
+            },
+            {
+                sourceUA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.130 Electron/7.1.7 Safari/537.36',
+                expected: {
+                    name:            'Electron',
+                    version:         '7.1.7',
+                    platform:        'desktop',
+                    os:              { name: 'Windows', version: '10' },
+                    engine:          { name: 'Blink', version: '0.0' },
+                    prettyUserAgent: 'Electron 7.1.7 / Windows 10',
+                    userAgent:       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.130 Electron/7.1.7 Safari/537.36'
                 }
             }
         ];
@@ -364,9 +365,10 @@ describe('Utils', () => {
     });
 
     it('Get concatenated values string', () => {
-        expect(getConcatenatedValuesString(['param_1'])).eql('"param_1"');
-        expect(getConcatenatedValuesString(['param_1', 'param_2', 'param_3'])).eql('"param_1", "param_2", "param_3"');
-        expect(getConcatenatedValuesString(['1', '2'], ' ')).eql('"1" "2"');
+        expect(getConcatenatedValuesString([1])).eql('"1"');
+        expect(getConcatenatedValuesString(['1', '2'])).eql('"1" and "2"');
+        expect(getConcatenatedValuesString([1, 2, 3])).eql('"1", "2", and "3"');
+        expect(getConcatenatedValuesString([1, 2], '\n')).eql('"1"\n"2"');
     });
 
     describe('Moment Module Loader', () => {
@@ -563,16 +565,16 @@ describe('Utils', () => {
             return del(TMP_ROOT);
         });
 
-        it("With 'allowMultipleWindows' option", async () => {
-            const tempDir     = await createTempProfile('testhost', true);
+        it("Without 'disableMultipleWindows' option", async () => {
+            const tempDir     = await createTempProfile('testhost', false);
             const profileFile = path.join(tempDir.path, 'Default', 'Preferences');
             const preferences = JSON.parse(fs.readFileSync(profileFile));
 
             expect(preferences.profile.content_settings.exceptions.popups).eql({ 'testhost': { setting: 1 } });
         });
 
-        it("Without 'allowMultipleWindows' option", async () => {
-            const tempDir     = await createTempProfile('testhost', false);
+        it("With 'disableMultipleWindows' option", async () => {
+            const tempDir     = await createTempProfile('testhost', true);
             const profileFile = path.join(tempDir.path, 'Default', 'Preferences');
             const preferences = JSON.parse(fs.readFileSync(profileFile));
 

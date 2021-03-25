@@ -216,30 +216,23 @@ describe('RequestMock', () => {
             .onRequestTo('http://example.com')
             .respond();
 
-        expect(mock.requestFilterRules.length).eql(1);
-        expect(mock.requestFilterRules[0].options.url).eql('http://example.com');
+        expect(mock._requestFilterRules.length).eql(1);
+        expect(mock._requestFilterRules[0].options.url).eql('http://example.com');
     });
 });
 
 describe('RequestHook', () => {
     it('Should handle any requests by default', () => {
-        const hook                          = new RequestHook();
-        const defaultHookRequestFilterRules = hook.requestFilterRules;
+        const hook = new RequestHook();
 
-        expect(defaultHookRequestFilterRules).to.deep.equal([RequestFilterRule.ANY]);
+        expect(hook._requestFilterRules.length).eql(1);
+        expect(hook._requestFilterRules[0].options).eql(RequestFilterRule.ANY.options);
     });
 
-    it('Should not duplicate instantiated filter rules between test runs (GH-2650)', () => {
-        const url  = 'http://example.com';
-        const hook = new RequestHook(url);
+    it('Should have an identifier', () => {
+        const hook = new RequestHook();
 
-        hook._instantiateRequestFilterRules();
-
-        expect(hook._instantiatedRequestFilterRules.length).eql(1);
-
-        hook._instantiateRequestFilterRules();
-
-        expect(hook._instantiatedRequestFilterRules.length).eql(1);
+        expect(hook.id).not.undefined;
     });
 });
 

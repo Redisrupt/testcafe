@@ -1,4 +1,9 @@
-import { pull, remove, chain } from 'lodash';
+import {
+    pull,
+    remove,
+    chain
+} from 'lodash';
+
 import { readSync as read } from 'read-file-relative';
 import promisifyEvent from 'promisify-event';
 import Mustache from 'mustache';
@@ -6,12 +11,16 @@ import AsyncEventEmitter from '../utils/async-event-emitter';
 import TestRunDebugLog from './debug-log';
 import TestRunErrorFormattableAdapter from '../errors/test-run/formattable-adapter';
 import TestCafeErrorList from '../errors/error-list';
+import { GeneralError } from '../errors/runtime';
 import {
     RequestHookUnhandledError,
     PageLoadError,
     RequestHookNotImplementedMethodError,
-    RoleSwitchInRoleInitializerError
+    RoleSwitchInRoleInitializerError,
+    SwitchToWindowPredicateError,
+    WindowNotFoundError
 } from '../errors/test-run/';
+
 import PHASE from './phase';
 import CLIENT_MESSAGES from './client-messages';
 import COMMAND_TYPE from './commands/type';
@@ -21,11 +30,9 @@ import testRunTracker from '../api/test-run-tracker';
 import ROLE_PHASE from '../role/phase';
 import ReporterPluginHost from '../reporter/plugin-host';
 import BrowserConsoleMessages from './browser-console-messages';
-import { UNSTABLE_NETWORK_MODE_HEADER } from '../browser/connection/unstable-network-mode';
 import WarningLog from '../notifications/warning-log';
 import WARNING_MESSAGE from '../notifications/warning-message';
 import { StateSnapshot, SPECIAL_ERROR_PAGE } from 'testcafe-hammerhead';
-import { NavigateToCommand } from './commands/actions';
 import * as INJECTABLES from '../assets/injectables';
 import { findProblematicScripts } from '../custom-client-scripts/utils';
 import getCustomClientScriptUrl from '../custom-client-scripts/get-url';
@@ -41,10 +48,14 @@ import {
     isResizeWindowCommand
 } from './commands/utils';
 
-import { TEST_RUN_ERRORS } from '../errors/types';
+import { GetCurrentWindowsCommand, SwitchToWindowCommand } from './commands/actions';
+
+import { RUNTIME_ERRORS, TEST_RUN_ERRORS } from '../errors/types';
+import processTestFnError from '../errors/process-test-fn-error';
 
 const lazyRequire                 = require('import-lazy')(require);
 const SessionController           = lazyRequire('./session-controller');
+const ObservedCallsitesStorage    = lazyRequire('./observed-callsites-storage');
 const ClientFunctionBuilder       = lazyRequire('../client-functions/client-function-builder');
 const BrowserManipulationQueue    = lazyRequire('./browser-manipulation-queue');
 const TestRunBookmark             = lazyRequire('./bookmark');
@@ -52,6 +63,7 @@ const AssertionExecutor           = lazyRequire('../assertions/executor');
 const actionCommands              = lazyRequire('./commands/actions');
 const browserManipulationCommands = lazyRequire('./commands/browser-manipulation');
 const serviceCommands             = lazyRequire('./commands/service');
+const observationCommands         = lazyRequire('./commands/observation');
 
 const { executeJsExpression, executeAsyncJsExpression } = lazyRequire('./execute-js-expression');
 
@@ -143,7 +155,7 @@ const withRetries = ( fn, { retries = 3, delayBetweenRetries = 1000 } = {} ) =>
 
 
 export default class TestRun extends AsyncEventEmitter {
-    constructor (test, browserConnection, screenshotCapturer, globalWarningLog, opts) {
+    constructor ({ test, browserConnection, screenshotCapturer, globalWarningLog, opts, compilerService }) {
         super();
 
         this[testRunMarker] = true;
@@ -162,12 +174,14 @@ export default class TestRun extends AsyncEventEmitter {
         this.activeDialogHandler  = null;
         this.activeIframeSelector = null;
         this.speed                = this.opts.speed;
-        this.pageLoadTimeout      = this.opts.pageLoadTimeout;
+        this.pageLoadTimeout      = this._getPageLoadTimeout(test, opts);
 
-        this.disablePageReloads   = test.disablePageReloads || opts.disablePageReloads && test.disablePageReloads !==
-                                    false;
+        this.disablePageReloads   = test.disablePageReloads || opts.disablePageReloads && test.disablePageReloads !== false;
         this.disablePageCaching   = test.disablePageCaching || opts.disablePageCaching;
-        this.allowMultipleWindows = opts.allowMultipleWindows;
+
+        this.disableMultipleWindows = opts.disableMultipleWindows;
+
+        this.requestTimeout = this._getRequestTimeout(test, opts);
 
         this.session = SessionController.getSession(this);
 
@@ -206,8 +220,25 @@ export default class TestRun extends AsyncEventEmitter {
 
         this.debugLogger = this.opts.debugLogger;
 
+        this.observedCallsites = new ObservedCallsitesStorage();
+        this.compilerService   = compilerService;
+
         this._addInjectables();
         this._initRequestHooks();
+    }
+
+    _getPageLoadTimeout (test, opts) {
+        if (test.timeouts?.pageLoadTimeout !== void 0)
+            return test.timeouts.pageLoadTimeout;
+
+        return opts.pageLoadTimeout;
+    }
+
+    _getRequestTimeout (test, opts) {
+        return {
+            page: test.timeouts?.pageRequestTimeout || opts.pageRequestTimeout,
+            ajax: test.timeouts?.ajaxRequestTimeout || opts.ajaxRequestTimeout
+        };
     }
 
     _addClientScriptContentWarningsIfNecessary () {
@@ -218,7 +249,7 @@ export default class TestRun extends AsyncEventEmitter {
 
         if (duplicatedContent.length) {
             const suffix                            = getPluralSuffix(duplicatedContent);
-            const duplicatedContentClientScriptsStr = getConcatenatedValuesString(duplicatedContent, ',\n ');
+            const duplicatedContentClientScriptsStr = getConcatenatedValuesString(duplicatedContent, '\n');
 
             this.warningLog.addWarning(WARNING_MESSAGE.clientScriptsWithDuplicatedContent, suffix, duplicatedContentClientScriptsStr);
         }
@@ -249,7 +280,7 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     addRequestHook (hook) {
-        if (this.requestHooks.indexOf(hook) !== -1)
+        if (this.requestHooks.includes(hook))
             return;
 
         this.requestHooks.push(hook);
@@ -257,7 +288,7 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     removeRequestHook (hook) {
-        if (this.requestHooks.indexOf(hook) === -1)
+        if (!this.requestHooks.includes(hook))
             return;
 
         pull(this.requestHooks, hook);
@@ -265,10 +296,9 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     _initRequestHook (hook) {
-        hook.warningLog = this.warningLog;
+        hook._warningLog = this.warningLog;
 
-        hook._instantiateRequestFilterRules();
-        hook._instantiatedRequestFilterRules.forEach(rule => {
+        hook._requestFilterRules.forEach(rule => {
             this.session.addRequestEventListeners(rule, {
                 onRequest:           hook.onRequest.bind(hook),
                 onConfigureResponse: hook._onConfigureResponse.bind(hook),
@@ -291,9 +321,9 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     _disposeRequestHook (hook) {
-        hook.warningLog = null;
+        hook._warningLog = null;
 
-        hook._instantiatedRequestFilterRules.forEach(rule => {
+        hook._requestFilterRules.forEach(rule => {
             this.session.removeRequestEventListeners(rule);
         });
     }
@@ -305,7 +335,7 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     // Hammerhead payload
-    _getPayloadScript () {
+    async getPayloadScript () {
         this.fileDownloadingHandled               = false;
         this.resolveWaitForFileDownloadingPromise = null;
 
@@ -315,7 +345,7 @@ export default class TestRun extends AsyncEventEmitter {
             browserHeartbeatRelativeUrl:  JSON.stringify(this.browserConnection.heartbeatRelativeUrl),
             browserStatusRelativeUrl:     JSON.stringify(this.browserConnection.statusRelativeUrl),
             browserStatusDoneRelativeUrl: JSON.stringify(this.browserConnection.statusDoneRelativeUrl),
-            browserActivePageIdUrl:       JSON.stringify(this.browserConnection.activePageIdUrl),
+            browserActiveWindowIdUrl:     JSON.stringify(this.browserConnection.activeWindowIdUrl),
             userAgent:                    JSON.stringify(this.browserConnection.userAgent),
             testName:                     JSON.stringify(this.test.name),
             fixtureName:                  JSON.stringify(this.test.fixture.name),
@@ -323,13 +353,14 @@ export default class TestRun extends AsyncEventEmitter {
             pageLoadTimeout:              this.pageLoadTimeout,
             childWindowReadyTimeout:      CHILD_WINDOW_READY_TIMEOUT,
             skipJsErrors:                 this.opts.skipJsErrors,
-            retryTestPages:               !!this.opts.retryTestPages,
+            retryTestPages:               this.opts.retryTestPages,
             speed:                        this.speed,
-            dialogHandler:                JSON.stringify(this.activeDialogHandler)
+            dialogHandler:                JSON.stringify(this.activeDialogHandler),
+            canUseDefaultWindowActions:   JSON.stringify(await this.browserConnection.canUseDefaultWindowActions())
         });
     }
 
-    _getIframePayloadScript () {
+    async getIframePayloadScript () {
         return Mustache.render(IFRAME_TEST_RUN_TEMPLATE, {
             testRunId:       JSON.stringify(this.session.id),
             selectorTimeout: this.opts.selectorTimeout,
@@ -355,11 +386,6 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     handlePageError (ctx, err) {
-        if (ctx.req.headers[UNSTABLE_NETWORK_MODE_HEADER]) {
-            ctx.closeWithError(500, err.toString());
-            return;
-        }
-
         this.pendingPageError = new PageLoadError(err, ctx.reqOpts.url);
 
         ctx.redirect(ctx.toProxyUrl(SPECIAL_ERROR_PAGE));
@@ -373,18 +399,14 @@ export default class TestRun extends AsyncEventEmitter {
             await fn(this);
         }
         catch (err) {
-            if (storeError) {
-                let screenshotPath = null;
+            await this._makeScreenshotOnFail();
 
-                const { screenshots } = this.opts;
+            this.addError(err);
 
-                if (screenshots && screenshots.takeOnFails)
-                    screenshotPath = await this.executeCommand(new browserManipulationCommands.TakeScreenshotOnFailCommand());
-
-                this.addError(err, screenshotPath);
-                return false;
-            }
-            throw err;
+            return false;
+        }
+        finally {
+            this.errScreenshotPath = null;
         }
 
         return !this._addPendingPageErrorIfAny();
@@ -474,19 +496,20 @@ export default class TestRun extends AsyncEventEmitter {
         return false;
     }
 
-    _createErrorAdapter (err, screenshotPath) {
+    _createErrorAdapter (err) {
         return new TestRunErrorFormattableAdapter(err, {
             userAgent:      this.browserConnection.userAgent,
-            screenshotPath: screenshotPath || '',
+            screenshotPath: this.errScreenshotPath || '',
+            testRunId:      this.id,
             testRunPhase:   this.phase
         });
     }
 
-    addError (err, screenshotPath) {
+    addError (err) {
         const errList = err instanceof TestCafeErrorList ? err.items : [err];
 
         errList.forEach(item => {
-            const adapter = this._createErrorAdapter(item, screenshotPath);
+            const adapter = this._createErrorAdapter(item);
 
             this.errs.push(adapter);
         });
@@ -529,7 +552,9 @@ export default class TestRun extends AsyncEventEmitter {
     async _enqueueBrowserConsoleMessagesCommand (command, callsite) {
         await this._enqueueCommand(command, callsite);
 
-        return this.consoleMessages.getCopy();
+        const consoleMessageCopy = this.consoleMessages.getCopy();
+
+        return consoleMessageCopy[this.browserConnection.activeWindowId];
     }
 
     async _enqueueSetBreakpointCommand (callsite, error) {
@@ -585,10 +610,27 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     // Handle driver request
+    _shouldResolveCurrentDriverTask (driverStatus) {
+        const currentCommand = this.currentDriverTask.command;
+
+        const isExecutingObservationCommand = currentCommand instanceof observationCommands.ExecuteSelectorCommand ||
+            currentCommand instanceof observationCommands.ExecuteClientFunctionCommand;
+
+        const isDebugActive = currentCommand instanceof serviceCommands.SetBreakpointCommand;
+
+        const shouldExecuteCurrentCommand =
+            driverStatus.isFirstRequestAfterWindowSwitching && (isExecutingObservationCommand || isDebugActive);
+
+        return !shouldExecuteCurrentCommand;
+    }
+
     _fulfillCurrentDriverTask (driverStatus) {
+        if (!this.currentDriverTask)
+            return;
+
         if (driverStatus.executionError)
             this._rejectCurrentDriverTask(driverStatus.executionError);
-        else
+        else if (this._shouldResolveCurrentDriverTask(driverStatus))
             this._resolveCurrentDriverTask(driverStatus.result);
     }
 
@@ -611,9 +653,6 @@ export default class TestRun extends AsyncEventEmitter {
         const pageError                  = this.pendingPageError || driverStatus.pageError;
         const currentTaskRejectedByError = pageError && this._handlePageErrorStatus(pageError);
 
-        if (this.disconnected)
-            return new Promise((_, reject) => reject());
-
         this.consoleMessages.concat(driverStatus.consoleMessages);
 
         if (!currentTaskRejectedByError && driverStatus.isCommandResult) {
@@ -624,6 +663,9 @@ export default class TestRun extends AsyncEventEmitter {
             }
 
             this._fulfillCurrentDriverTask(driverStatus);
+
+            if (driverStatus.isPendingWindowSwitching)
+                return null;
         }
 
         return this._getCurrentDriverTaskCommand();
@@ -704,11 +746,16 @@ export default class TestRun extends AsyncEventEmitter {
             await this._enqueueSetBreakpointCommand(callsite);
     }
 
-    async executeAction (actionName, command, callsite) {
-        let error  = null;
-        let result = null;
+    async executeAction (apiActionName, command, callsite) {
+        const actionArgs = { apiActionName, command };
 
-        await this.emitActionStart(actionName, command);
+        let errorAdapter = null;
+        let error        = null;
+        let result       = null;
+
+        await this.emitActionEvent('action-start', actionArgs);
+
+        const start = new Date();
 
         try {
             result = await this.executeCommand(command, callsite);
@@ -717,7 +764,26 @@ export default class TestRun extends AsyncEventEmitter {
             error = err;
         }
 
-        await this.emitActionDone(actionName, command, error);
+        const duration = new Date() - start;
+
+        if (error) {
+            // NOTE: check if error is TestCafeErrorList is specific for the `useRole` action
+            // if error is TestCafeErrorList we do not need to create an adapter,
+            // since error is already was processed in role initializer
+            if (!(error instanceof TestCafeErrorList)) {
+                await this._makeScreenshotOnFail();
+
+                errorAdapter = this._createErrorAdapter(processTestFnError(error));
+            }
+        }
+
+        Object.assign(actionArgs, {
+            result,
+            duration,
+            err: errorAdapter
+        });
+
+        await this.emitActionEvent('action-done', actionArgs);
 
         if (error)
             throw error;
@@ -785,6 +851,13 @@ export default class TestRun extends AsyncEventEmitter {
         if (command.type === COMMAND_TYPE.getBrowserConsoleMessages)
             return await this._enqueueBrowserConsoleMessagesCommand(command, callsite);
 
+        if (command.type === COMMAND_TYPE.switchToPreviousWindow)
+            command.windowId = this.browserConnection.previousActiveWindowId;
+
+        if (command.type === COMMAND_TYPE.switchToWindowByPredicate)
+            return this._switchToWindowByPredicate(command);
+
+
         return this._enqueueCommand(command, callsite);
     }
 
@@ -795,6 +868,13 @@ export default class TestRun extends AsyncEventEmitter {
         this.pendingPageError = null;
 
         return Promise.reject(err);
+    }
+
+    async _makeScreenshotOnFail () {
+        const { screenshots } = this.opts;
+
+        if (!this.errScreenshotPath && screenshots && screenshots.takeOnFails)
+            this.errScreenshotPath = await this.executeCommand(new browserManipulationCommands.TakeScreenshotOnFailCommand());
     }
 
     _decorateWithFlag (fn, flagName, value) {
@@ -859,7 +939,7 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     async navigateToUrl (url, forceReload, stateSnapshot) {
-        const navigateCommand = new NavigateToCommand({ url, forceReload, stateSnapshot });
+        const navigateCommand = new actionCommands.NavigateToCommand({ url, forceReload, stateSnapshot });
 
         await this.executeCommand(navigateCommand);
     }
@@ -903,7 +983,6 @@ export default class TestRun extends AsyncEventEmitter {
         await bookmark.restore(callsite, stateSnapshot);
     }
 
-    // Get current URL
     async getCurrentUrl () {
         const builder = new ClientFunctionBuilder(() => {
             /* eslint-disable no-undef */
@@ -914,6 +993,29 @@ export default class TestRun extends AsyncEventEmitter {
         const getLocation = builder.getFunction();
 
         return await getLocation();
+    }
+
+    async _switchToWindowByPredicate (command) {
+        const currentWindows = await this.executeCommand(new GetCurrentWindowsCommand({}, this));
+
+        const windows = currentWindows.filter(wnd => {
+            try {
+                const url = new URL(wnd.url);
+
+                return command.findWindow({ url, title: wnd.title });
+            }
+            catch (e) {
+                throw new SwitchToWindowPredicateError(e.message);
+            }
+        });
+
+        if (!windows.length)
+            throw new WindowNotFoundError();
+
+        if (windows.length > 1)
+            this.warningLog.addWarning(WARNING_MESSAGE.multipleWindowsFoundByPredicate);
+
+        await this.executeCommand(new SwitchToWindowCommand({ windowId: windows[0].id }), this);
     }
 
     _disconnect (err) {
@@ -927,14 +1029,15 @@ export default class TestRun extends AsyncEventEmitter {
         delete testRunTracker.activeTestRuns[this.session.id];
     }
 
-    async emitActionStart (apiActionName, command) {
+    async emitActionEvent (eventName, args) {
         if (!this.preventEmitActionEvents)
-            await this.emit('action-start', { command, apiActionName });
+            await this.emit(eventName, args);
     }
 
-    async emitActionDone (apiActionName, command, errors) {
-        if (!this.preventEmitActionEvents)
-            await this.emit('action-done', { command, apiActionName, errors });
+    static isMultipleWindowsAllowed (testRun) {
+        const { disableMultipleWindows, test, browserConnection } = testRun;
+
+        return !disableMultipleWindows && !test.isLegacy && !!browserConnection.activeWindowId;
     }
 }
 
@@ -944,6 +1047,9 @@ const ServiceMessages = TestRun.prototype;
 // NOTE: this function is time-critical and must return ASAP to avoid client disconnection
 ServiceMessages[CLIENT_MESSAGES.ready] = function (msg) {
     this.debugLog.driverMessage(msg);
+
+    if (this.disconnected)
+        return Promise.reject(new GeneralError(RUNTIME_ERRORS.testRunRequestInDisconnectedBrowser, this.browserConnection.browserInfo.alias));
 
     this.emit('connected');
 
@@ -957,7 +1063,7 @@ ServiceMessages[CLIENT_MESSAGES.ready] = function (msg) {
     this.lastDriverStatusId       = msg.status.id;
     this.lastDriverStatusResponse = this._handleDriverRequest(msg.status);
 
-    if (this.lastDriverStatusResponse)
+    if (this.lastDriverStatusResponse || msg.status.isPendingWindowSwitching)
         return this.lastDriverStatusResponse;
 
     // NOTE: we send an empty response after the MAX_RESPONSE_DELAY timeout is exceeded to keep connection

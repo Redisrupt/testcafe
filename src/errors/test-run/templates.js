@@ -11,7 +11,7 @@ import {
 const EXTERNAL_LINKS = {
     createNewIssue:      'https://github.com/DevExpress/testcafe/issues/new?template=bug-report.md',
     troubleshootNetwork: 'https://go.devexpress.com/TestCafe_FAQ_ARequestHasFailed.aspx',
-    viewportSizes:       'http://viewportsizes.com'
+    viewportSizes:       'https://github.com/DevExpress/device-specs/blob/master/viewport-sizes.json'
 };
 
 export default {
@@ -32,8 +32,8 @@ export default {
     `,
 
     [TEST_RUN_ERRORS.pageLoadError]: err => `
-        A request to ${formatUrl(err.url)} has failed.
-        Use quarantine mode to perform additional attempts to execute this test.
+        Failed to load the page at ${formatUrl(err.url)}.
+        Increase the value of the "pageRequestTimeout" variable, enable the "retryTestPages" option, or use quarantine mode to perform additional attempts to execute this test.
         You can find troubleshooting information for this issue at ${formatUrl(EXTERNAL_LINKS.troubleshootNetwork)}.
 
         Error details:
@@ -43,8 +43,8 @@ export default {
     [TEST_RUN_ERRORS.uncaughtErrorOnPage]: err => `
         A JavaScript error occurred on ${formatUrl(err.pageDestUrl)}.
         Repeat test actions in the browser and check the console for errors.
-        If you see this error, it means that the tested website caused it. You can fix it or disable tracking JavaScript errors in TestCafe. To do the latter, enable the "--skip-js-errors" option.
-        If this error does not occur, please write a new issue at:
+        To ignore client-side JavaScript errors, enable the "--skip-js-errors" CLI option, or set the "skipJsErrors" configuration file property to "true".
+        If the website only throws this error when you test it with TestCafe, please create a new issue at:
         ${formatUrl(EXTERNAL_LINKS.createNewIssue)}.
 
         JavaScript error details:
@@ -137,6 +137,10 @@ export default {
         The "${err.argumentName}" argument is expected to be a Role instance, but it was ${err.actualValue}.
     `,
 
+    [TEST_RUN_ERRORS.actionFunctionArgumentError]: err => `
+        The "${err.argumentName}" argument is expected to be a function, but it was ${err.actualValue}.
+    `,
+
     [TEST_RUN_ERRORS.actionPositiveIntegerArgumentError]: err => `
         The "${err.argumentName}" argument is expected to be a positive integer, but it was ${err.actualValue}.
     `,
@@ -187,7 +191,12 @@ export default {
 
     [TEST_RUN_ERRORS.actionCannotFindFileToUploadError]: err => `
         Cannot find the following file(s) to upload:
-        ${err.filePaths.map(path => `  ${escapeHtml(path)}`).join('\n')}
+        ${err.filePaths.map(path => escapeHtml(path)).join('\n')}
+
+        The following locations were scanned for the missing upload files:
+        ${err.scannedFilePaths.map(path => escapeHtml(path)).join('\n')}
+
+        Ensure these files exist or change the working directory.
     `,
 
     [TEST_RUN_ERRORS.actionElementNotTextAreaError]: () => `
@@ -232,6 +241,10 @@ export default {
 
     [TEST_RUN_ERRORS.externalAssertionLibraryError]: err => `
         ${escapeHtml(err.errMsg)}
+
+        <span class="diff-added">+ expected</span> <span class="diff-removed">- actual</span>
+
+        ${err.diff}
     `,
 
     [TEST_RUN_ERRORS.domNodeClientFunctionResultError]: err => `
@@ -330,5 +343,48 @@ export default {
 
     [TEST_RUN_ERRORS.closeChildWindowError]: () => `
         An error occurred while closing child windows.
-    `
+    `,
+
+    [TEST_RUN_ERRORS.childWindowClosedBeforeSwitchingError]: () => `
+        The child window was closed before TestCafe could switch to it.
+    `,
+
+    [TEST_RUN_ERRORS.cannotCloseWindowWithChildrenError]: () => `
+        Cannot close a window that has an open child window.
+    `,
+
+    [TEST_RUN_ERRORS.targetWindowNotFoundError]: () => `
+        Cannot find the window specified in the action parameters.
+    `,
+
+    [TEST_RUN_ERRORS.parentWindowNotFoundError]: () => `
+        Cannot find the parent window. Make sure that the tested window was opened from another window.
+    `,
+
+    [TEST_RUN_ERRORS.previousWindowNotFoundError]: () => `
+        Cannot find the previous window. Make sure that the previous window is opened.
+    `,
+
+    [TEST_RUN_ERRORS.switchToWindowPredicateError]: err => `
+        An error occurred inside the "switchToWindow" argument function.
+
+        Error details:
+        ${escapeHtml(err.errMsg)}
+    `,
+
+    [TEST_RUN_ERRORS.multipleWindowsModeIsDisabledError]: err => `
+        Multi-window mode is disabled. To use the "${err.methodName}" method, remove the "disableMultipleWindows" option.
+    `,
+
+    [TEST_RUN_ERRORS.multipleWindowsModeIsNotSupportedInRemoteBrowserError]: err => `
+        Multi-window mode is supported in Chrome, Chromium, Edge 84+ and Firefox only. Run tests in these browsers to use the "${err.methodName}" method.
+    `,
+
+    [TEST_RUN_ERRORS.cannotCloseWindowWithoutParent]: () => `
+        Cannot close the window because it does not have a parent. The parent window was closed or you are attempting to close the root browser window where tests were launched.
+    `,
+
+    [TEST_RUN_ERRORS.cannotRestoreChildWindowError]: () => `
+        Failed to restore connection to window within the allocated timeout.
+    `,
 };

@@ -8,6 +8,35 @@ export default {
 
     isMultiBrowser: false,
 
+    supportMultipleWindows: true,
+
+    getActiveWindowId (browserId) {
+        return this.openedBrowsers[browserId].activeWindowId;
+    },
+
+    setActiveWindowId (browserId, val) {
+        this.openedBrowsers[browserId].activeWindowId = val;
+    },
+
+    getPageTitle (browserId) {
+        const runtimeInfo     = this.openedBrowsers[browserId];
+        const isIdlePageShown = !Object.keys(runtimeInfo.windowDescriptors).length;
+
+        return isIdlePageShown ? browserId : runtimeInfo.activeWindowId;
+    },
+
+    getWindowDescriptor (browserId) {
+        const runtimeInfo = this.openedBrowsers[browserId];
+
+        return runtimeInfo.windowDescriptors[runtimeInfo.activeWindowId];
+    },
+
+    setWindowDescriptor (browserId, windowDescriptor) {
+        const runtimeInfo = this.openedBrowsers[browserId];
+
+        runtimeInfo.windowDescriptors[runtimeInfo.activeWindowId] = windowDescriptor;
+    },
+
     _getConfig () {
         throw new Error('Not implemented');
     },
@@ -31,8 +60,13 @@ export default {
         return true;
     },
 
-    isHeadlessBrowser (browserId) {
-        return this.openedBrowsers[browserId].config.headless;
+    isHeadlessBrowser (browserId, browserName) {
+        if (browserId)
+            return this.openedBrowsers[browserId].config.headless;
+
+        const config = this._getConfig(browserName);
+
+        return !!config.headless;
     },
 
     _getCropDimensions (viewportWidth, viewportHeight) {
@@ -50,7 +84,7 @@ export default {
     async takeScreenshot (browserId, path, viewportWidth, viewportHeight, fullPage) {
         const runtimeInfo    = this.openedBrowsers[browserId];
         const browserClient  = this._getBrowserProtocolClient(runtimeInfo);
-        const binaryImage    = await browserClient.getScreenshotData(runtimeInfo, fullPage);
+        const binaryImage    = await browserClient.getScreenshotData(fullPage);
         const cropDimensions = this._getCropDimensions(viewportWidth, viewportHeight);
 
         let pngImage = await readPng(binaryImage);

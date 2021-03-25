@@ -1,5 +1,6 @@
 const expect                              = require('chai').expect;
 const { pull: remove, chain, values }     = require('lodash');
+const TestRun                             = require('../../lib/test-run');
 const TEST_RUN_PHASE                      = require('../../lib/test-run/phase');
 const { TEST_RUN_ERRORS, RUNTIME_ERRORS } = require('../../lib/errors/types');
 const TestRunErrorFormattableAdapter      = require('../../lib/errors/test-run/formattable-adapter');
@@ -23,6 +24,7 @@ const {
     ActionNullableStringArgumentError,
     ActionStringOrStringArrayArgumentError,
     ActionStringArrayElementError,
+    ActionFunctionArgumentError,
     PageLoadError,
     UncaughtErrorOnPage,
     UncaughtErrorInTestCode,
@@ -75,16 +77,149 @@ const {
     ChildWindowIsNotLoadedError,
     ChildWindowNotFoundError,
     CannotSwitchToWindowError,
-    CloseChildWindowError
+    CloseChildWindowError,
+    ChildWindowClosedBeforeSwitchingError,
+    WindowNotFoundError,
+    ParentWindowNotFoundError,
+    PreviousWindowNotFoundError,
+    SwitchToWindowPredicateError,
+    CannotCloseWindowWithChildrenError,
+    MultipleWindowsModeIsDisabledError,
+    CannotCloseWindowWithoutParentError,
+    MultipleWindowsModeIsNotAvailableInRemoteBrowserError,
+    CannotRestoreChildWindowError
 } = require('../../lib/errors/test-run');
 
 const untestedErrorTypes = Object.keys(TEST_RUN_ERRORS).map(key => TEST_RUN_ERRORS[key]);
 
 const userAgentMock = 'Chrome 15.0.874.120 / macOS 10.15';
 
-const testAssertionError = (function () {
+const testAssertionErrorArray = (function () {
+    try {
+        expect([1, 2, 3, [4, 5], 6]).eql([1, 4, 2, 3, [5, 6, [7]]]);
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorBoolean = (function () {
     try {
         expect(true).eql(false);
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorBuffer = (function () {
+    try {
+        expect(Buffer.from('test')).eql(Buffer.from([1, 2, 3]));
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorEmpty = (function () {
+    try {
+        expect([]).eql('');
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorFunction = (function () {
+    try {
+        expect(function () {
+            return true;
+        }).eql(function () {
+            return false;
+        });
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorNumber = (function () {
+    try {
+        expect(1).eql(2);
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorObject = (function () {
+    try {
+        const obj1 = {
+            first: {
+                second: {
+                    third: {
+                        fourth: {
+                            fifth: {
+                                hello: 'world',
+                                six:   '6'
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        const obj2 = {
+            first: {
+                second: {
+                    third: {
+                        fourth: {
+                            fifth: {
+                                hello: 'world'
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        expect(obj1).eql(obj2);
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorString = (function () {
+    try {
+        expect('hi').eql('hey');
+    }
+    catch (err) {
+        return err;
+    }
+
+    return null;
+})();
+
+const testAssertionErrorUndefinedNull = (function () {
+    let undefinedVar;
+
+    try {
+        expect(undefinedVar).eql(null);
     }
     catch (err) {
         return err;
@@ -117,6 +252,43 @@ function assertErrorMessage (file, err) {
 
 describe('Error formatting', () => {
     describe('Errors', () => {
+        it('Base error formattable adapter properties', () => {
+            const testRunMock = TestRun.prototype;
+
+            Object.assign(testRunMock, {
+                session:           { id: 'test-run-id' },
+                browserConnection: { userAgent: 'chrome' },
+                errScreenshotPath: 'screenshot-path',
+                phase:             'test-run-phase',
+                callsite:          'callsite',
+                errs:              []
+            });
+
+            TestRun.prototype.addError.call(testRunMock, { callsite: 'callsite' });
+
+            const err = testRunMock.errs[0];
+
+            expect(err).instanceOf(TestRunErrorFormattableAdapter);
+
+            expect(err).eql({
+                userAgent:      'chrome',
+                screenshotPath: 'screenshot-path',
+                testRunId:      'test-run-id',
+                testRunPhase:   'test-run-phase',
+                callsite:       'callsite'
+            });
+        });
+
+        it('Should not throw if the specified decorator was not found', () => {
+            expect(() => {
+                const error = new ExternalAssertionLibraryError(testAssertionErrorArray, testCallsite);
+
+                error.diff = '<div class="unknown-decorator">text</div>';
+
+                getErrorAdapter(error).formatMessage('', 100);
+            }).to.not.throw();
+        });
+
         it('Should format "actionIntegerOptionError" message', () => {
             assertErrorMessage('action-integer-option-error', new ActionIntegerOptionError('offsetX', '1.01'));
         });
@@ -263,7 +435,11 @@ describe('Error formatting', () => {
         });
 
         it('Should format "actionCannotFindFileToUploadError" message', () => {
-            assertErrorMessage('action-cannot-find-file-to-upload-error', new ActionCannotFindFileToUploadError(['/path/1', '/path/2']));
+            const filePaths        = ['/path/1', '/path/2'];
+            const scannedFilePaths = ['full-path-to/path/1', 'full-path-to/path/2'];
+            const err              = new ActionCannotFindFileToUploadError(filePaths, scannedFilePaths);
+
+            assertErrorMessage('action-cannot-find-file-to-upload-error', err);
         });
 
         it('Should format "actionUnsupportedDeviceTypeError" message', () => {
@@ -290,12 +466,23 @@ describe('Error formatting', () => {
             assertErrorMessage('current-iframe-is-invisible-error', new CurrentIframeIsInvisibleError());
         });
 
-        it('Should format "missingAwaitError', () => {
+        it('Should format "missingAwaitError"', () => {
             assertErrorMessage('missing-await-error', new MissingAwaitError(testCallsite));
         });
 
-        it('Should format "externalAssertionLibraryError', () => {
-            assertErrorMessage('external-assertion-library-error', new ExternalAssertionLibraryError(testAssertionError, testCallsite));
+        it('Should format "externalAssertionLibraryError"', () => {
+            const filepath = filename => `../data/expected-test-run-errors/external-assertion-library-errors/${filename}`;
+
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorArray, testCallsite), filepath('array'));
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorBoolean, testCallsite), filepath('boolean'));
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorBuffer, testCallsite), filepath('buffer'));
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorEmpty, testCallsite), filepath('empty-representation'));
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorFunction, testCallsite), filepath('function'));
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorNumber, testCallsite), filepath('number'));
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorObject, testCallsite), filepath('object'));
+            assertTestRunError(new ExternalAssertionLibraryError(testAssertionErrorString, testCallsite), filepath('string'));
+
+            assertErrorMessage('external-assertion-library-errors/undefined-null', new ExternalAssertionLibraryError(testAssertionErrorUndefinedNull, testCallsite));
         });
 
         it('Should format "uncaughtErrorInClientFunctionCode"', () => {
@@ -413,6 +600,50 @@ describe('Error formatting', () => {
 
         it('Should format "closeChildWindowError"', () => {
             assertErrorMessage('close-child-window-error', new CloseChildWindowError());
+        });
+
+        it('Should format "childWindowClosedBeforeSwitchingError"', () => {
+            assertErrorMessage('child-window-closed-before-switching-error', new ChildWindowClosedBeforeSwitchingError());
+        });
+
+        it('Should format "cannotCloseWindowWithChildrenError"', () => {
+            assertErrorMessage('cannot-close-window-with-children-error', new CannotCloseWindowWithChildrenError());
+        });
+
+        it('Should format "cannotCloseWindowWithoutParentError"', () => {
+            assertErrorMessage('cannot-close-window-without-parent-error', new CannotCloseWindowWithoutParentError());
+        });
+
+        it('Should format "windowNotFoundError"', () => {
+            assertErrorMessage('window-not-found-error', new WindowNotFoundError());
+        });
+
+        it('Should format "parentWindowNotFoundError"', () => {
+            assertErrorMessage('parent-window-not-found-error', new ParentWindowNotFoundError());
+        });
+
+        it('Should format "previousWindowNotFoundError"', () => {
+            assertErrorMessage('previous-window-not-found-error', new PreviousWindowNotFoundError());
+        });
+
+        it('Should format "switchToWindowPredicateError"', () => {
+            assertErrorMessage('switch-to-window-predicate-error', new SwitchToWindowPredicateError('error message'));
+        });
+
+        it('Should format "actionFunctionArgumentError"', () => {
+            assertErrorMessage('action-function-argument-error', new ActionFunctionArgumentError('predicate', 'number'));
+        });
+
+        it('Should format "multipleWindowsModeIsDisabledError"', () => {
+            assertErrorMessage('multiple-windows-mode-is-disabled-error', new MultipleWindowsModeIsDisabledError('openWindow'));
+        });
+
+        it('Should format "multipleWindowsModeIsNotSupportedInRemoteBrowserError"', () => {
+            assertErrorMessage('multiple-windows-mode-is-not-available-in-remote-browser-error', new MultipleWindowsModeIsNotAvailableInRemoteBrowserError('openWindow'));
+        });
+
+        it('Should format "cannotRestoreChildWindowError"', () => {
+            assertErrorMessage('cannot-restore-child-window-error', new CannotRestoreChildWindowError());
         });
     });
 

@@ -6,25 +6,34 @@ const nativeMethods = hammerhead.nativeMethods;
 const STORAGE_KEY_PREFIX = 'testcafe|driver|';
 
 export default class Storage {
-    constructor (window, testRunId) {
+    constructor (window, testRunId, windowId) {
         this.storage    = nativeMethods.winSessionStorageGetter.call(window);
-        this.storageKey = STORAGE_KEY_PREFIX + testRunId;
+        this.storageKey = this._createStorageKey(testRunId, windowId);
         this.data       = {};
 
         this._loadFromStorage();
     }
 
+    _createStorageKey (testRunId, windowId) {
+        const storageKey = STORAGE_KEY_PREFIX + testRunId;
+
+        if (windowId)
+            return storageKey + '|' + windowId;
+
+        return storageKey;
+    }
+
     _loadFromStorage () {
-        const savedData = this.storage.getItem(this.storageKey);
+        const savedData = nativeMethods.storageGetItem.call(this.storage, this.storageKey);
 
         if (savedData) {
             this.data = JSON.parse(savedData);
-            this.storage.removeItem(this.storageKey);
+            nativeMethods.storageRemoveItem.call(this.storage, this.storageKey);
         }
     }
 
     save () {
-        this.storage.setItem(this.storageKey, JSON.stringify(this.data));
+        nativeMethods.storageSetItem.call(this.storage, this.storageKey, JSON.stringify(this.data));
     }
 
     setItem (prop, value) {
@@ -37,6 +46,6 @@ export default class Storage {
     }
 
     dispose () {
-        this.storage.removeItem(this.storageKey);
+        nativeMethods.storageRemoveItem.call(this.storage, this.storageKey);
     }
 }

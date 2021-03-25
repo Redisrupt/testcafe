@@ -24,6 +24,91 @@ interface ScreenshotsOptions extends TakeScreenshotOptions {
     pathPattern?: string;
 }
 
+interface VideoOptions {
+    /**
+     * Specifies whether to save the entire recording as a single file.
+     */
+    singleFile?: boolean;
+    /**
+     * Specifies whether to record only failed tests.
+     */
+    failedOnly?: boolean;
+    /**
+     * Specifies the path to the FFmpeg codec executable.
+     */
+    ffmpegPath?: string;
+    /**
+     * Specifies a custom pattern that defines how TestCafe composes the relative path to a video file.
+     */
+    pathPattern?: string;
+}
+
+interface DefaultEncodingOptions {
+    /**
+     * **NOTE:** overwrite output files without asking for a confirmation
+     * @default true
+     */
+    y: boolean;
+    /**
+     * **NOTE:** use the time when a frame is read from the source as its timestamp
+     *
+     * **IMPORTANT:** must be specified before configuring the source
+     * @default 1
+     */
+    'use_wallclock_as_timestamps': number;
+    /**
+     * **NOTE:** use stdin as a source
+     * @default 'pipe:0'
+     */
+    i: string;
+    /**
+     * **NOTE:** use the H.264 video codec
+     * @default 'libx264'
+     */
+    'c:v': string;
+    /**
+     * **NOTE:** use the `ultrafast` compression preset
+     * @default 'ultrafast'
+     */
+    preset: string;
+
+    /**
+     * **NOTE:** use the yuv420p pixel format (the most widely supported)
+     * @default 'yuv420p'
+     */
+    'pix_fmt': string;
+    /**
+     * **NOTE:** scale input frames to make the frame height divisible by 2 (yuv420p's requirement)
+     * @default 'scale=trunc(iw/2)*2:trunc(ih/2)*2'
+     */
+    vf: string;
+    /**
+     * Specifies a custom frame rate (FPS).
+     * @default 30
+     */
+    r: number;
+}
+
+interface VideoEncodingOptions extends Partial<DefaultEncodingOptions> {
+    /**
+     * https://ffmpeg.org/ffmpeg.html#Options
+     *
+     * custom ffmpeg options
+     */
+    [option: string]: unknown;
+
+    /**
+     * Specifies the video's aspect ratio.
+     *
+     * Can be set to '4:3', '16:9', etc.
+     */
+    aspect?: string;
+}
+
+type CompilerOptions = {
+    [key in 'typescript']: object;
+};
+
 interface TestCafe {
     /**
      * Creates the test runner that is used to configure and launch test tasks.
@@ -113,6 +198,17 @@ interface Runner {
     screenshots(options: ScreenshotsOptions): this;
 
     /**
+     * https://devexpress.github.io/testcafe/documentation/using-testcafe/common-concepts/screenshots-and-videos.html#basic-video-options
+     *
+     * Enables TestCafe to take videos of the tested webpages.
+     *
+     * @param path - Output directory
+     * @param options - Video options
+     * @param encodingOptions - Video encoding options
+     */
+    video(path: string, options?: VideoOptions, encodingOptions?: VideoEncodingOptions): this;
+
+    /**
      * Configures TestCafe's reporting feature.
      *
      * @param name - The name of the reporter to use.
@@ -171,6 +267,11 @@ interface Runner {
      * The absolute or relative path to the TypeScript configuration file. Relative paths resolve from the current directory (the directory from which you run TestCafe).
      */
     tsConfigPath(path: string): this;
+
+    /**
+     * Specifies custom compiler options for built-in test file compilers.
+     */
+    compilerOptions(compilerOptions: CompilerOptions): this;
 }
 
 interface BrowserConnection {
@@ -219,6 +320,10 @@ interface RunOptions {
      */
     pageLoadTimeout: number;
     /**
+     * Specifies the time (in milliseconds) TestCafe waits for the browser to start
+     */
+    browserInitTimeout: number;
+    /**
      * Specifies the test execution speed. A number between 1 (fastest) and 0.01 (slowest). If an individual action's speed is also specified, the action speed setting overrides the test speed.
      */
     speed: number;
@@ -234,6 +339,14 @@ interface RunOptions {
      * Defines whether to disable page caching during test execution.
      */
     disablePageCaching: boolean;
+    /**
+     * Specifies the timeout in milliseconds to complete the request for the page's HTML
+     */
+    pageRequestTimeout: number;
+    /**
+     * Specifies the timeout in milliseconds to complete the AJAX requests (XHR or fetch)
+     */
+    ajaxRequestTimeout: number;
 }
 
 interface TestCafeFactory {
@@ -242,6 +355,9 @@ interface TestCafeFactory {
         port1?: number,
         port2?: number,
         sslOptions?: TlsOptions,
-        developmentMode?: boolean
+        developmentMode?: boolean,
+        retryTestPages?: boolean,
+        cache?: boolean,
+        configFile?: string
     ): Promise<TestCafe>;
 }

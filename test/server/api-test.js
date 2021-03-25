@@ -1,7 +1,11 @@
 const expect         = require('chai').expect;
+const proxyquire     = require('proxyquire');
+const sinon          = require('sinon');
 const resolve        = require('path').resolve;
 const assertAPIError = require('./helpers/assert-runtime-error').assertAPIError;
 const compile        = require('./helpers/compile');
+const OPTION_NAMES   = require('../../lib/configuration/option-names');
+
 
 describe('API', function () {
     this.timeout(20000);
@@ -649,6 +653,54 @@ describe('API', function () {
                                   ' > 5 |    .clientScripts(\'script2.js\')\n' +
                                   '   6 |    (\'test\', async t => {});\n' +
                                   '   7 |'
+                    });
+                });
+        });
+
+        it('Should raise an error if "test.timeouts" method takes a wrong argument', () => {
+            const testfile = resolve('test/server/data/test-suites/test-timeouts/testfile.js');
+
+            return compile(testfile)
+                .then(() => {
+                    throw new Error('Promise rejection expected');
+                })
+                .catch(err => {
+                    assertAPIError(err, {
+                        stackTop: testfile,
+
+                        message: 'Cannot prepare tests due to an error.\n\n' +
+                            'test.timeouts is expected to be a test timeouts initializer, but it was number.',
+
+                        callsite: '   1 |fixture `Test timeouts`;\n' +
+                            '   2 |\n' +
+                            '   3 |test\n' +
+                            ' > 4 |    .timeouts(20000)\n' +
+                            '   5 |    (\'test\', async () => {});\n' +
+                            '   6 |'
+                    });
+                });
+        });
+
+        it('Should raise an error if "test.timeouts.pageLoadTimeout" is not a non-negative number', () => {
+            const testfile = resolve('test/server/data/test-suites/test-timeouts/page-load-timeout/testfile.js');
+
+            return compile(testfile)
+                .then(() => {
+                    throw new Error('Promise rejection expected');
+                })
+                .catch(err => {
+                    assertAPIError(err, {
+                        stackTop: testfile,
+
+                        message: 'Cannot prepare tests due to an error.\n\n' +
+                            'test.timeouts.pageLoadTimeout is expected to be a non-negative number, but it was -1.',
+
+                        callsite: '   1 |fixture `Page Load Timeout`;\n' +
+                            '   2 |\n' +
+                            '   3 |test\n' +
+                            ' > 4 |    .timeouts({ pageLoadTimeout: -1 })\n' +
+                            '   5 |    (\'test\', async () => {});\n' +
+                            '   6 |'
                     });
                 });
         });
@@ -1369,7 +1421,7 @@ describe('API', function () {
     });
 
     describe('Role', function () {
-        it('Should raise an error if Role "loginPage" is not a string', function () {
+        it('Should raise an error if Role "loginUrl" is not a string', function () {
             const testfile = resolve('test/server/data/test-suites/role-login-page-is-not-a-string/testfile.js');
 
             return compile(testfile)
@@ -1381,7 +1433,7 @@ describe('API', function () {
                         stackTop: testfile,
 
                         message: 'Cannot prepare tests due to an error.\n\n' +
-                                 '"loginPage" argument is expected to be a string, but it was number.',
+                                 '"loginUrl" argument is expected to be a string, but it was number.',
 
                         callsite: "   1 |import { Role } from 'testcafe';\n" +
                                   '   2 |\n' +
@@ -1618,6 +1670,70 @@ describe('API', function () {
                         });
                     });
             });
+        });
+    });
+
+    describe('createTestCafe', () => {
+        it('Should accept configuration as an arguments array', async () => {
+            const TestCafe = sinon.stub().returns({});
+
+            const createTestCafe = proxyquire('../..', {
+                './testcafe':      TestCafe,
+                'async-exit-hook': () => {},
+
+                'endpoint-utils': {
+                    isMyHostname: sinon.stub().resolves(true),
+                    isFreePort:   sinon.stub().resolves(true)
+                }
+            });
+
+            await createTestCafe('my-host', 1337, 1338, { test: 42 }, true, true);
+
+            const configuration = TestCafe.firstCall.args[0];
+
+            expect(configuration.getOption(OPTION_NAMES.hostname)).equal('my-host');
+            expect(configuration.getOption(OPTION_NAMES.port1)).equal(1337);
+            expect(configuration.getOption(OPTION_NAMES.port2)).equal(1338);
+            expect(configuration.getOption(OPTION_NAMES.ssl)).deep.equal({ test: 42 });
+            expect(configuration.getOption(OPTION_NAMES.developmentMode)).be.true;
+            expect(configuration.getOption(OPTION_NAMES.retryTestPages)).be.true;
+
+        });
+
+        it('Should accept configuration as an object', async () => {
+            const TestCafe = sinon.stub().returns({});
+
+            const createTestCafe = proxyquire('../..', {
+                './testcafe':      TestCafe,
+                'async-exit-hook': () => {},
+
+                'endpoint-utils': {
+                    isMyHostname: sinon.stub().resolves(true),
+                    isFreePort:   sinon.stub().resolves(true)
+                }
+            });
+
+            await createTestCafe({
+                hostname: 'my-host',
+                port1:    1337,
+                port2:    1338,
+
+                ssl: {
+                    test: 42
+                },
+
+                developmentMode: true,
+                retryTestPages:  true
+            });
+
+            const configuration = TestCafe.firstCall.args[0];
+
+            expect(configuration.getOption(OPTION_NAMES.hostname)).equal('my-host');
+            expect(configuration.getOption(OPTION_NAMES.port1)).equal(1337);
+            expect(configuration.getOption(OPTION_NAMES.port2)).equal(1338);
+            expect(configuration.getOption(OPTION_NAMES.ssl)).deep.equal({ test: 42 });
+            expect(configuration.getOption(OPTION_NAMES.developmentMode)).be.true;
+            expect(configuration.getOption(OPTION_NAMES.retryTestPages)).be.true;
         });
     });
 });

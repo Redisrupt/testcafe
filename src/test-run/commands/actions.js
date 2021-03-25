@@ -3,7 +3,15 @@ import SelectorBuilder from '../../client-functions/selectors/selector-builder';
 import ClientFunctionBuilder from '../../client-functions/client-function-builder';
 import functionBuilderSymbol from '../../client-functions/builder-symbol';
 import CommandBase from './base';
-import { ActionOptions, ClickOptions, MouseOptions, TypeOptions, DragToElementOptions } from './options';
+import {
+    ActionOptions,
+    ClickOptions,
+    MouseOptions,
+    TypeOptions,
+    DragToElementOptions,
+    OffsetOptions
+} from './options';
+
 import { initSelector, initUploadSelector } from './validations/initializers';
 import { executeJsExpression } from '../execute-js-expression';
 import { isJSExpression } from './utils';
@@ -19,7 +27,8 @@ import {
     stringOrStringArrayArgument,
     setSpeedArgument,
     actionRoleArgument,
-    booleanArgument
+    booleanArgument,
+    functionArgument
 } from './validations/argument';
 
 import { SetNativeDialogHandlerCodeWrongTypeError } from '../../errors/test-run';
@@ -37,6 +46,10 @@ function initClickOptions (name, val) {
 
 function initMouseOptions (name, val) {
     return new MouseOptions(val, true);
+}
+
+function initOffsetOptions (name, val) {
+    return new OffsetOptions(val, true);
 }
 
 function initTypeOptions (name, val) {
@@ -76,7 +89,6 @@ function initDialogHandler (name, val, { skipVisibilityCheck, testRun }) {
         builder = new ClientFunctionBuilder(fn, options, { instantiation: methodName, execution: methodName });
 
     return builder.getCommand([]);
-
 }
 
 // Commands
@@ -200,6 +212,50 @@ export class DragToElementCommand extends CommandBase {
     }
 }
 
+export class ScrollCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.scroll);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'selector', init: initSelector, required: false },
+            { name: 'position', type: nullableStringArgument, required: false },
+            { name: 'x', type: positiveIntegerArgument, defaultValue: null },
+            { name: 'y', type: positiveIntegerArgument, defaultValue: null },
+            { name: 'options', type: actionOptions, init: initOffsetOptions, required: true }
+        ];
+    }
+}
+
+export class ScrollByCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.scrollBy);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'selector', init: initSelector, required: false },
+            { name: 'byX', type: integerArgument, defaultValue: 0 },
+            { name: 'byY', type: integerArgument, defaultValue: 0 },
+            { name: 'options', type: actionOptions, init: initOffsetOptions, required: true }
+        ];
+    }
+}
+
+export class ScrollIntoViewCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.scrollIntoView);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'selector', init: initSelector, required: true },
+            { name: 'options', type: actionOptions, init: initOffsetOptions, required: true },
+        ];
+    }
+}
+
 export class SelectTextCommand extends CommandBase {
     constructor (obj, testRun) {
         super(obj, testRun, TYPE.selectText);
@@ -313,6 +369,100 @@ export class SwitchToIframeCommand extends CommandBase {
 export class SwitchToMainWindowCommand {
     constructor () {
         this.type = TYPE.switchToMainWindow;
+    }
+}
+
+export class OpenWindowCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.openWindow);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'url', type: urlArgument },
+        ];
+    }
+}
+
+export class CloseWindowCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.closeWindow);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'windowId', type: nullableStringArgument, required: true },
+        ];
+    }
+}
+
+
+export class GetCurrentWindowCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.getCurrentWindow);
+    }
+
+    _getAssignableProperties () {
+        return [
+        ];
+    }
+}
+
+export class GetCurrentWindowsCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.getCurrentWindows);
+    }
+
+    _getAssignableProperties () {
+        return [
+        ];
+    }
+}
+
+
+export class SwitchToWindowCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.switchToWindow);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'windowId', type: nonEmptyStringArgument, required: true }
+        ];
+    }
+}
+
+export class SwitchToWindowByPredicateCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.switchToWindowByPredicate);
+    }
+
+    _getAssignableProperties () {
+        return [
+            { name: 'findWindow', type: functionArgument, required: true }
+        ];
+    }
+}
+
+
+export class SwitchToParentWindowCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.switchToParentWindow);
+    }
+
+    _getAssignableProperties () {
+        return [
+        ];
+    }
+}
+
+export class SwitchToPreviousWindowCommand extends CommandBase {
+    constructor (obj, testRun) {
+        super(obj, testRun, TYPE.switchToPreviousWindow);
+    }
+
+    _getAssignableProperties () {
+        return [];
     }
 }
 

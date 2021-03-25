@@ -1,11 +1,22 @@
-import { join as joinPath, dirname, basename } from 'path';
+import {
+    join as joinPath,
+    dirname,
+    basename
+} from 'path';
+
 import { generateThumbnail } from 'testcafe-browser-tools';
 import { cropScreenshot } from './crop';
 import { isInQueue, addToQueue } from '../utils/async-queue';
 import WARNING_MESSAGE from '../notifications/warning-message';
 import escapeUserAgent from '../utils/escape-user-agent';
 import correctFilePath from '../utils/correct-file-path';
-import { readPngFile, stat, writePng } from '../utils/promisified-functions';
+import {
+    readPngFile,
+    stat,
+    writePng
+} from '../utils/promisified-functions';
+
+import DEFAULT_SCREENSHOT_EXTENSION from './default-extension';
 
 
 export default class Capturer {
@@ -81,7 +92,7 @@ export default class Capturer {
     }
 
     _getCustomScreenshotPath (customPath) {
-        const correctedCustomPath = correctFilePath(customPath);
+        const correctedCustomPath = correctFilePath(customPath, DEFAULT_SCREENSHOT_EXTENSION);
 
         return this._joinWithBaseScreenshotPath(correctedCustomPath);
     }
@@ -147,12 +158,18 @@ export default class Capturer {
             await generateThumbnail(screenshotPath, thumbnailPath);
         });
 
+        const testRunId         = this.testEntry.testRuns[this.browserId].id;
+        const userAgent         = escapeUserAgent(this.pathPattern.data.parsedUserAgent.prettyUserAgent);
+        const quarantineAttempt = this.pathPattern.data.quarantineAttempt;
+        const takenOnFail       = forError;
+
         const screenshot = {
+            testRunId,
             screenshotPath,
             thumbnailPath,
-            userAgent:         escapeUserAgent(this.pathPattern.data.parsedUserAgent.prettyUserAgent),
-            quarantineAttempt: this.pathPattern.data.quarantineAttempt,
-            takenOnFail:       forError,
+            userAgent,
+            quarantineAttempt,
+            takenOnFail
         };
 
         this.testEntry.screenshots.push(screenshot);

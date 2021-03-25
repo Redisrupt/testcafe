@@ -72,7 +72,18 @@ export const TEST_RUN_ERRORS = {
     childWindowIsNotLoadedError:                           'E68',
     childWindowNotFoundError:                              'E69',
     cannotSwitchToWindowError:                             'E70',
-    closeChildWindowError:                                 'E71'
+    closeChildWindowError:                                 'E71',
+    childWindowClosedBeforeSwitchingError:                 'E72',
+    cannotCloseWindowWithChildrenError:                    'E73',
+    targetWindowNotFoundError:                             'E74',
+    parentWindowNotFoundError:                             'E76',
+    previousWindowNotFoundError:                           'E77',
+    switchToWindowPredicateError:                          'E78',
+    actionFunctionArgumentError:                           'E79',
+    multipleWindowsModeIsDisabledError:                    'E80',
+    multipleWindowsModeIsNotSupportedInRemoteBrowserError: 'E81',
+    cannotCloseWindowWithoutParent:                        'E82',
+    cannotRestoreChildWindowError:                         'E83'
 };
 
 export const RUNTIME_ERRORS = {
@@ -87,7 +98,7 @@ export const RUNTIME_ERRORS = {
     testFilesNotFound:                                  'E1008',
     noTestsToRun:                                       'E1009',
     cannotFindReporterForAlias:                         'E1010',
-    multipleStdoutReporters:                            'E1011',
+    multipleSameStreamReporters:                        'E1011',
     optionValueIsNotValidRegExp:                        'E1012',
     optionValueIsNotValidKeyValue:                      'E1013',
     invalidSpeedValue:                                  'E1014',
@@ -106,6 +117,7 @@ export const RUNTIME_ERRORS = {
     unsupportedUrlProtocol:                             'E1027',
     testControllerProxyCannotResolveTestRun:            'E1028',
     timeLimitedPromiseTimeoutExpired:                   'E1029',
+    noTestsToRunDueFiltering:                           'E1030',
     cannotSetVideoOptionsWithoutBaseVideoPathSpecified: 'E1031',
     multipleAPIMethodCallForbidden:                     'E1032',
     invalidReporterOutput:                              'E1033',
@@ -130,6 +142,12 @@ export const RUNTIME_ERRORS = {
     unexpectedIPCHeadPacket:                            'E1052',
     unexpectedIPCBodyPacket:                            'E1053',
     unexpectedIPCTailPacket:                            'E1054',
-    cannotUseAllowMultipleWindowsOptionForLegacyTests:  'E1055',
-    cannotUseAllowMultipleWindowsOptionForSomeBrowsers: 'E1056'
+    cannotRunLocalNonHeadlessBrowserWithoutDisplay:     'E1057',
+    uncaughtErrorInReporter:                            'E1058',
+    roleInitializedWithRelativeUrl:                     'E1059',
+    typeScriptCompilerLoadingError:                     'E1060',
+    cannotCustomizeSpecifiedCompilers:                  'E1061',
+    cannotEnableRetryTestPagesOption:                   'E1062',
+    browserConnectionError:                             'E1063',
+    testRunRequestInDisconnectedBrowser:                'E1064'
 };

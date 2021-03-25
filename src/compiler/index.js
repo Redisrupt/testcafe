@@ -1,4 +1,10 @@
-import { flattenDeep, find, chunk, uniq } from 'lodash';
+import {
+    flattenDeep,
+    find,
+    chunk,
+    uniq
+} from 'lodash';
+
 import stripBom from 'strip-bom';
 import { readFile } from '../utils/promisified-functions';
 import { GeneralError } from '../errors/runtime';
@@ -16,18 +22,7 @@ export default class Compiler {
     }
 
     static getSupportedTestFileExtensions () {
-        const testFileCompilers = getTestFileCompilers();
-
-        return uniq(testFileCompilers.reduce((acc, compiler) => {
-            const extensions = compiler.getSupportedExtension();
-
-            if (Array.isArray(extensions))
-                extensions.forEach(ext => acc.push(ext));
-            else
-                acc.push(extensions);
-
-            return acc;
-        }, []));
+        return uniq(flattenDeep(getTestFileCompilers().map(compiler => compiler.getSupportedExtension())));
     }
 
     async _createTestFileInfo (filename) {

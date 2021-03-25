@@ -1,9 +1,12 @@
 import hammerhead from '../deps/hammerhead';
-import * as styleUtils from './style';
 import * as arrayUtils from './array';
 
 const browserUtils  = hammerhead.utils.browser;
 const nativeMethods = hammerhead.nativeMethods;
+
+// NOTE: We have to retrieve styleUtils.get from hammerhead
+// to avoid circular dependencies between domUtils and styleUtils
+const getElementStyleProperty = hammerhead.utils.style.get;
 
 export const getActiveElement                       = hammerhead.utils.dom.getActiveElement;
 export const findDocument                           = hammerhead.utils.dom.findDocument;
@@ -43,6 +46,7 @@ export const isTextEditableElementAndEditingAllowed = hammerhead.utils.dom.isTex
 export const isContentEditableElement               = hammerhead.utils.dom.isContentEditableElement;
 export const isDomElement                           = hammerhead.utils.dom.isDomElement;
 export const isShadowUIElement                      = hammerhead.utils.dom.isShadowUIElement;
+export const isShadowRoot                           = hammerhead.utils.dom.isShadowRoot;
 export const isElementFocusable                     = hammerhead.utils.dom.isElementFocusable;
 export const isHammerheadAttr                       = hammerhead.utils.dom.isHammerheadAttr;
 export const isElementReadOnly                      = hammerhead.utils.dom.isElementReadOnly;
@@ -53,6 +57,7 @@ export const closest                                = hammerhead.utils.dom.close
 export const getParents                             = hammerhead.utils.dom.getParents;
 export const findParent                             = hammerhead.utils.dom.findParent;
 export const getTopSameDomainWindow                 = hammerhead.utils.dom.getTopSameDomainWindow;
+export const getParentExceptShadowRoot              = hammerhead.utils.dom.getParentExceptShadowRoot;
 
 function getElementsWithTabIndex (elements) {
     return arrayUtils.filter(elements, el => el.tabIndex > 0);
@@ -176,7 +181,7 @@ export function getFocusableElements (doc, sort = false) {
         if (element.disabled)
             continue;
 
-        if (styleUtils.get(element, 'display') === 'none' || styleUtils.get(element, 'visibility') === 'hidden')
+        if (getElementStyleProperty(element, 'display') === 'none' || getElementStyleProperty(element, 'visibility') === 'hidden')
             continue;
 
         if ((browserUtils.isIE || browserUtils.isAndroid) && isOptionElement(element))
@@ -217,7 +222,7 @@ function getInvisibleElements (elements) {
     const invisibleElements = [];
 
     for (let i = 0; i < elements.length; i++) {
-        if (styleUtils.get(elements[i], 'display') === 'none')
+        if (getElementStyleProperty(elements[i], 'display') === 'none')
             invisibleElements.push(elements[i]);
     }
 
@@ -312,7 +317,7 @@ export function isElementContainsNode (parentElement, childNode) {
     if (isTheSameNode(childNode, parentElement))
         return true;
 
-    const childNodes = parentElement.childNodes;
+    const childNodes = nativeMethods.nodeChildNodesGetter.call(parentElement);
     const length     = getChildNodesLength(childNodes);
 
     for (let i = 0; i < length; i++) {
@@ -502,4 +507,14 @@ export function setElementValue (element, value) {
 
 export function isShadowElement (element) {
     return element && element.getRootNode && findDocument(element) !== element.getRootNode();
+}
+
+export function contains (element, target) {
+    if (!element || !target)
+        return false;
+
+    if (element.contains)
+        return element.contains(target);
+
+    return !!findParent(target, true, node => node === element);
 }

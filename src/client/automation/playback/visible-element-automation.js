@@ -76,7 +76,7 @@ export default class VisibleElementAutomation extends serviceUtils.EventEmitter 
             })
             .then(getElementUnderCursor)
             .then(currentElement => {
-                const elementUnderCursorContainsTarget = !!currentElement && this.element.contains(currentElement);
+                const elementUnderCursorContainsTarget = !!currentElement && domUtils.contains(this.element, currentElement);
 
                 if (!elementUnderCursorContainsTarget || !wasScrolled)
                     return null;
@@ -172,13 +172,17 @@ export default class VisibleElementAutomation extends serviceUtils.EventEmitter 
 
         if (useStrictElementCheck && (!state.isTarget || state.inMoving))
             throw new Error(AUTOMATION_ERROR_TYPES.foundElementIsNotTarget);
+
+        return state;
     }
 
-    _ensureElement (useStrictElementCheck, skipCheckAfterMoving) {
+    _ensureElement (useStrictElementCheck, skipCheckAfterMoving, skipMoving) {
         return this
             ._wrapAction(() => this._scrollToElement())
             .then(state => VisibleElementAutomation._checkElementState(state, useStrictElementCheck))
-            .then(() => this._wrapAction(() => this._moveToElement()))
+            .then(state => {
+                return skipMoving ? state : this._wrapAction(() => this._moveToElement());
+            })
             .then(state => {
                 if (!skipCheckAfterMoving)
                     VisibleElementAutomation._checkElementState(state, useStrictElementCheck);
@@ -186,7 +190,7 @@ export default class VisibleElementAutomation extends serviceUtils.EventEmitter 
                 return state;
             })
             .then(state => {
-                this.emit(this.TARGET_ELEMENT_FOUND_EVENT, {});
+                this.emit(this.TARGET_ELEMENT_FOUND_EVENT, { element: state.element });
 
                 return {
                     element:     state.element,

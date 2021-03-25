@@ -7,7 +7,10 @@
 .sass-cache
 .publish
 /___test-screenshots___
+/screenshots
 yarn.lock
 package-lock.json
 Gemfile.lock
 .npmrc
+.DS_Store
+!gulp

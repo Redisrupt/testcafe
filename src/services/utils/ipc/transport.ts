@@ -1,8 +1,19 @@
-import { AsyncReader, AsyncWriter, SyncReader, SyncWriter } from './io';
-import EventEmitter from '../../../../src/utils/async-event-emitter';
+import {
+    AsyncReader,
+    AsyncWriter,
+    SyncReader,
+    SyncWriter
+} from './io';
+
+import EventEmitter from '../../../utils/async-event-emitter';
 import { GeneralError } from '../../../errors/runtime';
 import { RUNTIME_ERRORS } from '../../../errors/types';
-import { IPCPacket, IPCResponsePacket, IPCTransport, isIPCResponsePacket } from './interfaces';
+import {
+    IPCPacket,
+    IPCResponsePacket,
+    IPCTransport,
+    isIPCResponsePacket
+} from './interfaces';
 
 
 export class HostTransport extends EventEmitter implements IPCTransport {
@@ -26,7 +37,10 @@ export class HostTransport extends EventEmitter implements IPCTransport {
     }
 
     public read (): void {
-        this.readers.forEach(reader => reader.on('data', data => this.emit('data', data)));
+        this.readers.forEach(reader => {
+            reader.on('data', data => this.emit('data', data));
+            reader.read();
+        });
     }
 
     public async write (message: IPCPacket): Promise<void> {
@@ -63,6 +77,7 @@ export class ServiceTransport extends EventEmitter implements IPCTransport {
 
     public read (): void {
         this.asyncReader.on('data', data => this.emit('data', data));
+        this.asyncReader.read();
     }
 
     public async write (message: IPCPacket): Promise<void> {

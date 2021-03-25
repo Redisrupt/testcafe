@@ -1,9 +1,10 @@
-const path            = require('path');
-const fs              = require('fs');
-const chai            = require('chai');
-const { expect }      = chai;
-const config          = require('../../../../config.js');
-const assertionHelper = require('../../../../assertion-helper.js');
+const path               = require('path');
+const fs                 = require('fs');
+const chai               = require('chai');
+const { expect }         = chai;
+const config             = require('../../../../config.js');
+const assertionHelper    = require('../../../../assertion-helper.js');
+const { createReporter } = require('../../../../utils/reporter');
 
 chai.use(require('chai-string'));
 
@@ -24,27 +25,23 @@ const getReporter = function (scope) {
         screenshot.screenshotPath  = patchScreenshotPath(screenshot.screenshotPath);
         screenshot.thumbnailPath   = patchScreenshotPath(screenshot.thumbnailPath);
         screenshot.isPassedAttempt = quarantine[screenshot.quarantineAttempt].passed;
+        screenshot.testRunId       = scope.testRunIds.includes(screenshot.testRunId);
 
         userAgents[screenshot.userAgent] = true;
     }
 
-    return function () {
-        return {
-            reportTestDone: (name, testRunInfo) => {
-                testRunInfo.screenshots.forEach(screenshot => prepareScreenshot(screenshot, testRunInfo.quarantine));
+    return createReporter({
+        reportTestDone: (name, testRunInfo) => {
+            testRunInfo.screenshots.forEach(screenshot => prepareScreenshot(screenshot, testRunInfo.quarantine));
 
-                scope.screenshots = testRunInfo.screenshots;
-                scope.userAgents  = Object.keys(userAgents);
-                scope.unstable    = testRunInfo.unstable;
-            },
-            reportFixtureStart: () => {
-            },
-            reportTaskStart: () => {
-            },
-            reportTaskDone: () => {
-            }
-        };
-    };
+            scope.screenshots = testRunInfo.screenshots;
+            scope.userAgents  = Object.keys(userAgents);
+            scope.unstable    = testRunInfo.unstable;
+        },
+        reportTestStart: (name, meta, { testRunIds }) => {
+            scope.testRunIds = testRunIds;
+        }
+    });
 };
 
 describe('[API] t.takeScreenshot()', function () {
@@ -218,6 +215,7 @@ describe('[API] t.takeScreenshot()', function () {
                         }
 
                         return {
+                            testRunId:         true,
                             screenshotPath,
                             thumbnailPath,
                             takenOnFail,
@@ -265,6 +263,15 @@ describe('[API] t.takeScreenshot()', function () {
                     expect(fs.existsSync(screenshot2Path)).eql(true);
                     expect(fs.existsSync(thumbnail1Path)).eql(true);
                     expect(fs.existsSync(thumbnail2Path)).eql(true);
+                });
+        });
+
+        it('Should add default extension if it is not specified', () => {
+            return runTests('./testcafe-fixtures/take-screenshot.js', 'Should add default extension', { only: 'chrome' })
+                .then(() => {
+                    expect(testReport.screenshotPath).endsWith('screenshot-path.png');
+
+                    return assertionHelper.removeScreenshotDir('screenshots');
                 });
         });
     }
@@ -412,7 +419,6 @@ describe('[API] t.takeElementScreenshot()', function () {
                 });
         });
 
-
         it('Should perform bottom-left crop', function () {
             return runTests('./testcafe-fixtures/take-element-screenshot.js', 'Bottom-left',
                 { setScreenshotPath: true })
@@ -423,7 +429,6 @@ describe('[API] t.takeElementScreenshot()', function () {
                     expect(result).eql(true);
                 });
         });
-
 
         it('Should perform bottom-right crop', function () {
             return runTests('./testcafe-fixtures/take-element-screenshot.js', 'Bottom-right',

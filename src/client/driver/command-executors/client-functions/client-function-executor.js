@@ -1,8 +1,13 @@
 import { Promise } from '../../deps/hammerhead';
 import DriverStatus from '../../status';
-import { createReplicator, FunctionTransform, ClientFunctionNodeTransform } from './replicator';
+import {
+    createReplicator,
+    FunctionTransform,
+    ClientFunctionNodeTransform
+} from './replicator';
+
 import evalFunction from './eval-function';
-import { UncaughtErrorInClientFunctionCode } from '../../../../errors/test-run';
+import { UncaughtErrorInClientFunctionCode } from '../../../../shared/errors';
 
 export default class ClientFunctionExecutor {
     constructor (command) {

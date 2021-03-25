@@ -4,15 +4,19 @@ const path                    = require('path');
 const chai                    = require('chai');
 const { expect }              = chai;
 const request                 = require('request');
-const { noop, times, uniqBy } = require('lodash');
+const { times, uniqBy }       = require('lodash');
+const consoleWrapper          = require('./helpers/console-wrapper');
+const isAlpine                = require('./helpers/is-alpine');
 const createTestCafe          = require('../../lib/');
 const COMMAND                 = require('../../lib/browser/connection/command');
 const Task                    = require('../../lib/runner/task');
 const BrowserConnection       = require('../../lib/browser/connection');
-const BrowserSet              = require('../../lib/runner/browser-set');
 const browserProviderPool     = require('../../lib/browser/provider/pool');
 const delay                   = require('../../lib/utils/delay');
-const consoleWrapper          = require('./helpers/console-wrapper');
+const OptionNames             = require('../../lib/configuration/option-names');
+const { GeneralError }        = require('../../lib/errors/runtime');
+const { RUNTIME_ERRORS }      = require('../../lib/errors/types');
+const { createReporter }      = require('../functional/utils/reporter');
 
 chai.use(require('chai-string'));
 
@@ -21,6 +25,8 @@ describe('Runner', () => {
     let runner                    = null;
     let connection                = null;
     let origRemoteBrowserProvider = null;
+
+    const BROWSER_NAME = `${isAlpine() ? 'chromium' : 'chrome'}:headless`;
 
     const remoteBrowserProviderMock = {
         openBrowser () {
@@ -31,8 +37,6 @@ describe('Runner', () => {
             return Promise.resolve();
         }
     };
-
-    const browserMock = { path: '/non/exist' };
 
     before(() => {
         return createTestCafe('127.0.0.1', 1335, 1336)
@@ -72,7 +76,9 @@ describe('Runner', () => {
     });
 
     describe('.browsers()', () => {
-        it('Should raise an error if browser was not found for the alias', () => {
+        it('Should raise an error if browser was not found for the alias', function () {
+            this.timeout(5000);
+
             return runner
                 .browsers('browser42')
                 .reporter('list')
@@ -145,26 +151,11 @@ describe('Runner', () => {
                 });
         });
 
-        it('Should raise an error if several reporters are going to write to the stdout', () => {
-            return runner
-                .browsers(connection)
-                .reporter(['json', 'xunit'])
-                .src('test/server/data/test-suites/basic/testfile2.js')
-                .run()
-                .then(() => {
-                    throw new Error('Promise rejection expected');
-                })
-                .catch(err => {
-                    expect(err.message).eql('Multiple reporters attempting to write to stdout: "json, xunit". ' +
-                                            'Only one reporter can write to stdout.');
-                });
-        });
-
         it('Should fallback to the default reporter if reporter was not set', () => {
             const storedRunTaskFn = runner._runTask;
 
-            runner._runTask = reporters => {
-                const reporterPlugin = reporters[0].plugin;
+            runner._runTask = ({ reporterPlugins }) => {
+                const reporterPlugin = reporterPlugins[0].plugin;
 
                 expect(reporterPlugin.reportFixtureStart).to.be.a('function');
                 expect(reporterPlugin.reportTestDone).to.be.a('function');
@@ -285,7 +276,7 @@ describe('Runner', () => {
                 });
         });
 
-        it('Should not display a message about "overriden options" after call "screenshots" method with undefined arguments', () => {
+        it('Should not display a message about "overridden options" after call "screenshots" method with undefined arguments', () => {
             const savedConsoleLog = console.log;
 
             console.log = consoleWrapper.log;
@@ -363,6 +354,62 @@ describe('Runner', () => {
         });
     });
 
+    describe('--retry-test-pages', () => {
+        it('hostname is not localhost and ssl is disabled', () => {
+            runner.configuration.mergeOptions({ [OptionNames.retryTestPages]: true });
+            runner.configuration.mergeOptions({ [OptionNames.hostname]: 'http://example.com' });
+
+            return runner
+                .browsers(connection)
+                .src('test/server/data/test-suites/basic/testfile2.js')
+                .run()
+                .then(() => {
+                    throw new Error('Promise rejection expected');
+                })
+                .catch(err => {
+                    expect(err.message).eql(
+                        'Cannot enable the \'retryTestPages\' option. Apply one of the following two solutions:\n' +
+                        '-- set \'localhost\' as the value of the \'hostname\' option\n' +
+                        '-- run TestCafe over HTTPS\n'
+                    );
+                });
+        });
+
+        it('hostname is localhost and ssl is disabled', () => {
+            runner.configuration.mergeOptions({ [OptionNames.retryTestPages]: true });
+
+            runner._runTask = () => {
+                throw new Error('Promise rejection expected');
+            };
+
+            return runner
+                .browsers(connection)
+                .src('test/server/data/test-suites/basic/testfile2.js')
+                .run()
+                .catch(err => {
+                    expect(err.message).eql('Promise rejection expected');
+                });
+        });
+
+        it('hostname is not localhost and ssl is enabled', () => {
+            runner.configuration.mergeOptions({ [OptionNames.retryTestPages]: true });
+            runner.configuration.mergeOptions({ [OptionNames.hostname]: 'http://example.com' });
+            runner.configuration.mergeOptions({ [OptionNames.ssl]: 'ssl' });
+
+            runner._runTask = () => {
+                throw new Error('Promise rejection expected');
+            };
+
+            return runner
+                .browsers(connection)
+                .src('test/server/data/test-suites/basic/testfile2.js')
+                .run()
+                .catch(err => {
+                    expect(err.message).eql('Promise rejection expected');
+                });
+        });
+    });
+
     describe('.video()', () => {
         it('Should throw an error if video options are specified without a base video path', () => {
             return runner
@@ -408,10 +455,12 @@ describe('Runner', () => {
             runner.bootstrapper._getBrowserConnections = () => {
                 runner.bootstrapper._getBrowserConnections = storedGetBrowserConnectionsFn;
 
-                return Promise.resolve();
+                return Promise.resolve({
+                    browserConnectionGroups: []
+                });
             };
 
-            runner._runTask = (reporterPlugin, browserSet, tests) => {
+            runner._runTask = ({ tests }) => {
                 const actualFiles = uniqBy(tests.map(test => test.testFile.filename));
 
                 expect(actualFiles).eql(expectedFiles);
@@ -422,7 +471,7 @@ describe('Runner', () => {
             };
 
             return runner
-                .browsers(browserMock)
+                .browsers(BROWSER_NAME)
                 .src('test/server/data/test-suites/basic/testfile1.js',
                     [
                         'test/server/data/test-suites/basic/*.js',
@@ -453,7 +502,8 @@ describe('Runner', () => {
                 .src(['test/server/data/test-suites/test-as-module/without-tests/testfile.js'])
                 .run()
                 .catch(err => {
-                    expect(err.message).eql('No tests to run. Either the test files contain no tests or the filter function is too restrictive.');
+                    expect(err.message).eql('No tests found in the specified source files.\n' +
+                        "Ensure the sources contain the 'fixture' and 'test' directives.");
                 });
         });
 
@@ -488,7 +538,7 @@ describe('Runner', () => {
 
             runner.filter(filterFn);
 
-            runner._runTask = (reporterPlugin, browserSet, tests) => {
+            runner._runTask = ({ tests }) => {
                 const actualTestNames = tests.map(test =>test.name).sort();
 
                 expectedTestNames = expectedTestNames.sort();
@@ -562,8 +612,9 @@ describe('Runner', () => {
                     throw new Error('Promise rejection expected');
                 })
                 .catch(err => {
-                    expect(err.message).eql('No tests to run. Either the test files contain no tests ' +
-                                            'or the filter function is too restrictive.');
+                    expect(err.message).eql('The specified filter settings exclude all tests.\n' +
+                        'Modify these settings to leave at least one available test.\n' +
+                        'For more information on how to specify filter settings, see https://devexpress.github.io/testcafe/documentation/using-testcafe/configuration-file.html#filter.');
                 });
         });
     });
@@ -582,7 +633,7 @@ describe('Runner', () => {
             return runner
                 .browsers(connection)
                 .reporter('list')
-                .src(['non-existing-file.js'])
+                .src(['non-existing-file-1.js', 'non-existing-file-2.js'])
                 .run()
                 .then(() => {
                     BrowserConnection._generateId = origGenerateId;
@@ -592,27 +643,20 @@ describe('Runner', () => {
                 .catch(err => {
                     BrowserConnection._generateId = origGenerateId;
 
-                    expect(err.message).eql('The specified glob pattern does not match any file or the default test directories are empty.');
+                    expect(err.message).eql(
+                        'TestCafe could not find the test files that match the following patterns:\n' +
+                        'non-existing-file-1.js\n' +
+                        'non-existing-file-2.js\n' +
+                        '\n' +
+                        `The "${process.cwd()}" current working directory was used as the base path.\n` +
+                        'Ensure the file patterns are correct or change the current working directory.\n' +
+                        'For more information on how to specify test files, see https://devexpress.github.io/testcafe/documentation/using-testcafe/command-line-interface.html#file-pathglob-pattern.');
 
                     expect(connectionsCount).eql(0);
                 });
         });
 
-        it('Should raise an error if the browser connections are not ready', function () {
-            const origGetReadyTimeout = BrowserSet.prototype._getReadyTimeout;
-
-            BrowserSet.prototype._getReadyTimeout = () => {
-                return Promise.resolve(100);
-            };
-
-            //NOTE: Restore original in prototype in test timeout callback
-            const testCallback = this.test.callback;
-
-            this.test.callback = err => {
-                BrowserSet.prototype._getReadyTimeout       = origGetReadyTimeout;
-                testCallback(err);
-            };
-
+        it('Should raise an error if the browser connections are not opened', function () {
             return testCafe
                 .createBrowserConnection()
                 .then(brokenConnection => {
@@ -620,16 +664,20 @@ describe('Runner', () => {
                         .browsers(brokenConnection)
                         .reporter('list')
                         .src('test/server/data/test-suites/basic/testfile2.js')
-                        .run();
+                        .run({ browserInitTimeout: 100 });
                 })
                 .then(() => {
                     throw new Error('Promise rejection expected');
                 })
                 .catch(err => {
-                    BrowserSet.prototype._getReadyTimeout = origGetReadyTimeout;
-
-                    expect(err.message).eql('Unable to establish one or more of the specified browser connections. ' +
-                                            'This can be caused by network issues or remote device failure.');
+                    expect(err.message).eql('Unable to establish one or more of the specified browser connections.\n' +
+                                            '1 of 1 browser connections have not been established:\n' +
+                                            '- remote\n\n' +
+                                            'Hints:\n' +
+                                            '- Use the "browserInitTimeout" option to allow more time for the browser to start. ' +
+                                            'The timeout is set to 0.1 seconds for all browsers.\n' +
+                                            '- The error can also be caused by network issues or remote device failure. ' +
+                                            'Make sure that the connection is stable and the remote device can be reached.');
                 });
         });
 
@@ -845,24 +893,27 @@ describe('Runner', () => {
             expect(runner.configuration.getOption('debugLogger')).to.deep.equal(customLogger);
         });
 
-        it('Should raise an error if "allowMultipleWindows" option is used for legacy tests', () => {
-            return runner
-                .browsers(connection)
-                .src('test/server/data/test-suites/legacy/test.test.js')
-                .run({ allowMultipleWindows: true })
-                .catch(err => {
-                    expect(err.message).eql('You cannot run Legacy API tests in multi-window mode.');
-                });
-        });
+        it('Should raise an error if request timeout options have wrong type', async () => {
+            let errorCount = 0;
 
-        it('Should raise an error if "allowMultipleWindows" option is used non-local browsers', () => {
-            return runner
-                .browsers(connection)
-                .src('test/server/data/test-suites/basic/testfile1.js')
-                .run({ allowMultipleWindows: true })
-                .catch(err => {
-                    expect(err.message).eql('You cannot use multi-window mode in "remote".');
-                });
+            const checkIncorrectRequestTimeout = (optionName, optionValue, expectedErrorMessage) => {
+                return runner
+                    .run({ [optionName]: optionValue })
+                    .catch(err => {
+                        errorCount++;
+
+                        expect(err.message).eql(expectedErrorMessage);
+
+                        delete runner.configuration._options[optionName];
+                    });
+            };
+
+            await checkIncorrectRequestTimeout(OptionNames.pageRequestTimeout, true, '"pageRequestTimeout" option is expected to be a non-negative number, but it was boolean.');
+            await checkIncorrectRequestTimeout(OptionNames.pageRequestTimeout, -1, '"pageRequestTimeout" option is expected to be a non-negative number, but it was -1.');
+            await checkIncorrectRequestTimeout(OptionNames.ajaxRequestTimeout, true, '"ajaxRequestTimeout" option is expected to be a non-negative number, but it was boolean.');
+            await checkIncorrectRequestTimeout(OptionNames.ajaxRequestTimeout, -1, '"ajaxRequestTimeout" option is expected to be a non-negative number, but it was -1.');
+
+            expect(errorCount).eql(4);
         });
     });
 
@@ -881,8 +932,47 @@ describe('Runner', () => {
         });
     });
 
+    describe('.compilerOptions', () => {
+        it('Should warn about deprecated options', () => {
+            return runner
+                .tsConfigPath('path-to-ts-config')
+                .run()
+                .catch(() => {
+                    expect(runner.warningLog.messages).eql([
+                        "The 'tsConfigPath' option is deprecated and will be removed in the next major release. " +
+                        "Use the 'compilerOptions.typescript.configPath' option instead."
+                    ]);
+                });
+        });
+
+        it('Should raise an error if the compilation options is specified wrongly', async () => {
+            const validateCompilerOptions = (opts, errMsg) => {
+                return runner
+                    .compilerOptions(opts)
+                    .run()
+                    .catch(err => {
+                        expect(err.message).eql(errMsg);
+
+                        delete runner.configuration._options[OptionNames.compilerOptions];
+                    });
+            };
+
+            await validateCompilerOptions({
+                'wrong-compiler-type': {},
+                'typescript':          {}
+            }, "You cannot specify options for the 'wrong-compiler-type' compiler.");
+
+            await validateCompilerOptions({
+                'wrong-compiler-type-1': {},
+                'wrong-compiler-type-2': {}
+            }, "You cannot specify options for the 'wrong-compiler-type-1' and 'wrong-compiler-type-2' compilers.");
+        });
+    });
+
     describe('Regression', () => {
-        it('Should not have unhandled rejections in runner (GH-825)', () => {
+        it('Should not have unhandled rejections in runner (GH-825)', function () {
+            this.timeout(10000);
+
             let rejectionReason = null;
 
             process.on('unhandledRejection', reason => {
@@ -890,7 +980,7 @@ describe('Runner', () => {
             });
 
             return runner
-                .browsers(browserMock)
+                .browsers(BROWSER_NAME)
                 .src([])
                 .run()
                 .then(() => {
@@ -942,11 +1032,15 @@ describe('Runner', () => {
                         resolve();
                     }, BROWSER_CLOSING_DELAY);
                 });
+            },
+
+            isHeadlessBrowser () {
+                return true;
             }
         };
 
         function taskDone () {
-            this.pendingBrowserJobs.forEach(job => {
+            this._pendingBrowserJobs.forEach(job => {
                 this.emit('browser-job-done', job);
             });
 
@@ -960,14 +1054,7 @@ describe('Runner', () => {
 
             runner
                 .src('test/server/data/test-suites/basic/testfile2.js')
-                .reporter(() => {
-                    return {
-                        reportTaskStart:    noop,
-                        reportTaskDone:     noop,
-                        reportTestDone:     noop,
-                        reportFixtureStart: noop
-                    };
-                });
+                .reporter(createReporter());
         });
 
         before(() => {
@@ -1115,5 +1202,85 @@ describe('Runner', () => {
         expect(runner.configuration.getOption('src')).eql(['/path-to-test']);
         expect(runner.configuration.getOption('browsers')).eql(['ie']);
         expect(runner.configuration.getOption('reporter')).eql([ { name: 'json', output: void 0 } ]);
+    });
+
+    describe('"Unable to establish one or more of the specifed browser connections" error message', function () {
+        const warningProvider = {
+            openBrowser (browserId, _, browserName) {
+                this.reportWarning(browserId, `some warning from "${browserName}"`);
+
+                const currentConnection = BrowserConnection.getById(browserId);
+
+                currentConnection.emit('error', new GeneralError(RUNTIME_ERRORS.cannotEstablishBrowserConnection));
+
+                return Promise.resolve();
+            },
+
+            closeBrowser () {
+                return Promise.resolve();
+            }
+        };
+
+        beforeEach(function () {
+            browserProviderPool.addProvider('warningProvider', warningProvider);
+        });
+
+        afterEach(function () {
+            browserProviderPool.removeProvider('warningProvider');
+        });
+
+        it('Should include warnings from browser providers', function () {
+            return runner
+                .src('./test/server/data/test-suites/basic/testfile1.js')
+                .browsers(['warningProvider:browser-alias1', 'warningProvider:browser-alias2'])
+                .run()
+                .then(() => {
+                    throw new Error('Promise rejection expected');
+                })
+                .catch(err => {
+                    expect(err.message).contains('- some warning from "browser-alias1"');
+                    expect(err.message).contains('- some warning from "browser-alias2"');
+                });
+        });
+
+        it('Should include timeout with the default values when "browser-init-timeout" is not specified', function () {
+            return runner
+                .src('./test/server/data/test-suites/basic/testfile1.js')
+                .browsers(['warningProvider:browser-alias1', 'warningProvider:browser-alias2'])
+                .run()
+                .then(() => {
+                    throw new Error('Promise rejection expected');
+                })
+                .catch(err => {
+                    expect(err.message).eql(
+                        'Unable to establish one or more of the specified browser connections.\n' +
+                        '2 of 2 browser connections have not been established:\n' +
+                        '- warningProvider:browser-alias1\n' +
+                        '- warningProvider:browser-alias2\n\n' +
+                        'Hints:\n' +
+                        '- some warning from "browser-alias1"\n' +
+                        '- some warning from "browser-alias2"\n' +
+                        '- Use the "browserInitTimeout" option to allow more time for the browser to start. ' +
+                        'The timeout is set to 2 minutes for local browsers and 6 minutes for remote browsers.\n' +
+                        '- The error can also be caused by network issues or remote device failure. ' +
+                        'Make sure that the connection is stable and the remote device can be reached.'
+                    );
+                });
+        });
+
+        it('Should include hint about used concurrency factor if it\'s greater than 3', function () {
+            return runner
+                .src('./test/server/data/test-suites/basic/testfile1.js')
+                .browsers(['warningProvider:browser-alias1'])
+                .concurrency(4)
+                .run({ browserInitTimeout: 100 })
+                .then(() => {
+                    throw new Error('Promise rejection expected');
+                })
+                .catch(err => {
+                    expect(err.message).contains('The error can be due to a concurrency factor that is too high for the host machine’s performance (the factor value 4 was specified). ' +
+                                                 'Try to decrease the concurrency factor or ensure more system resources are available on the host machine.');
+                });
+        });
     });
 });

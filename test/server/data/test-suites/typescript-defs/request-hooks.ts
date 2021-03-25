@@ -32,8 +32,9 @@ const mock = RequestMock()
     .onRequestTo(req => {
         return req.url === 'https://example.com';
     }).respond((req, res) => {
+        res.headers['Content-type'] = 'application/json';
         if (req.url === 'https://example.com')
-            res.statusCode = '200';
+            res.statusCode = 200;
     });
 
 
@@ -48,5 +49,6 @@ test
             .removeRequestHooks(mock)
             .expect(logger1.contains((t: any) => t.request.statusCode === 200)).ok()
             .expect(logger1.count((t: any) => t.request.statusCode === 200)).eql(1)
-            .expect(logger1.requests[0].request.body === 'test').ok();
+            .expect(logger1.requests[0].request.body === 'test').ok()
+            .expect(logger1.requests[0].response.timestamp - logger1.requests[0].request.timestamp).gt(0);
     });

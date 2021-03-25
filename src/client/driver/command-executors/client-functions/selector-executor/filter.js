@@ -1,5 +1,10 @@
-import { InvalidSelectorResultError } from '../../../../../errors/test-run';
-import { exists, visible, IsNodeCollection } from '../../../utils/element-utils';
+import { InvalidSelectorResultError } from '../../../../../shared/errors';
+import {
+    exists,
+    visible,
+    IsNodeCollection
+} from '../../../utils/element-utils';
+
 import testCafeCore from '../../../deps/testcafe-core';
 import hammerhead from '../../../deps/hammerhead';
 

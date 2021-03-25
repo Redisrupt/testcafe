@@ -1,14 +1,18 @@
-const expect                          = require('chai').expect;
-const fs                              = require('fs');
-const path                            = require('path');
-const assign                          = require('lodash').assign;
-const getTestList                     = require('../../lib/embedding-utils').getTestList;
-const getTypeScriptTestList           = require('../../lib/embedding-utils').getTypeScriptTestList;
-const getTestListFromCode             = require('../../lib/embedding-utils').getTestListFromCode;
-const getTypeScriptTestListFromCode   = require('../../lib/embedding-utils').getTypeScriptTestListFromCode;
-const getCoffeeScriptTestList         = require('../../lib/embedding-utils').getCoffeeScriptTestList;
-const getCoffeeScriptTestListFromCode = require('../../lib/embedding-utils').getCoffeeScriptTestListFromCode;
-const parserBase                      = require('../../lib/compiler/test-file/test-file-parser-base');
+const { expect } = require('chai');
+const fs         = require('fs');
+const path       = require('path');
+const { assign } = require('lodash');
+
+const {
+    getTestList,
+    getTypeScriptTestList,
+    getTestListFromCode,
+    getTypeScriptTestListFromCode,
+    getCoffeeScriptTestList,
+    getCoffeeScriptTestListFromCode
+} = require('../../lib/embedding-utils');
+
+const parserBase = require('../../lib/compiler/test-file/test-file-parser-base');
 
 const Test    = parserBase.Test;
 const Fixture = function (name, start, end, loc, meta, tests) {
@@ -36,6 +40,14 @@ function testFixtureParser (dir, expectedStructure, fileParser, codeParser) {
             .then(function (structure) {
                 expect(structure).eql(expected);
                 expect(codeParser(fileContent)).eql(expected);
+
+                Object.values(structure).forEach(fixture => {
+                    expect(fixture.loc).not.undefined;
+
+                    fixture.tests.forEach(test => {
+                        expect(test.loc).not.undefined;
+                    });
+                });
             });
     });
 

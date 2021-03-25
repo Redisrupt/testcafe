@@ -40,15 +40,27 @@ test('.notContains() assertion', async t => {
 
 test('.typeOf() assertion', async t => {
     await t
+        .expect(() => true).typeOf('function')
+        .expect({}).typeOf('object')
+        .expect(1).typeOf('number')
+        .expect('string').typeOf('string')
+        .expect(true).typeOf('boolean')
         .expect(void 0).typeOf('undefined')
-        .expect('hey').typeOf('string')
+        .expect(null).typeOf('null')
+        .expect(new RegExp('regex')).typeOf('regexp')
         .expect(42).typeOf('function');
 });
 
 test('.notTypeOf() assertion', async t => {
     await t
-        .expect(void 0).notTypeOf('string')
-        .expect('hey').notTypeOf('number')
+        .expect('function').notTypeOf('function')
+        .expect('object').notTypeOf('object')
+        .expect('number').notTypeOf('number')
+        .expect(1).notTypeOf('string')
+        .expect('boolean').notTypeOf('boolean')
+        .expect('undefined').notTypeOf('undefined')
+        .expect('null').notTypeOf('null')
+        .expect('regex').notTypeOf('regexp')
         .expect(42).notTypeOf('number');
 });
 
@@ -158,4 +170,91 @@ test('ClientFunction result assertion', async t => {
 
 test('Assertion without method call', async t => {
     await t.expect();
+});
+
+test('Passing Selector instance into an assertion', async t => {
+    await t.expect(Selector('#el1')).eql(true);
+});
+
+test('Passing ClientFunction instance into an assertion', async t => {
+    await t.expect(ClientFunction(() => true)).eql(true);
+});
+
+test('Await Selector property', async t => {
+    await t
+        .expect(Selector('#el1')).ok()
+        .expect(await Selector('#el1')).ok()
+        .expect(Selector('#el1').innerText).eql('')
+        .expect(await Selector('#el1').innerText).eql('');
+});
+
+test('Snapshot property without await', async t => {
+    await t.expect(Selector('#el1').innerText).eql('');
+
+    console.log(Selector('#el1').innerText); //eslint-disable-line
+
+    const tag = `element: ${Selector('#el1').tagName}`; //eslint-disable-line
+});
+
+test(`Console.log for promise which will be resolved`, async t => {
+    const a = Selector('#el1').innerText;
+
+    // eslint-disable-next-line no-console
+    console.log(a);
+
+    await t.expect(a).eql('');
+});
+
+test(`Convert for promise which will be resolved`, async t => {
+    const a = Selector('#el1').innerText;
+
+    const tag = `${a}`; //eslint-disable-line
+
+    await t.expect(a).eql('');
+});
+
+test('Snapshot property without await but valid', async t => {
+    const b = Selector('#el1').innerText; //eslint-disable-line
+
+    await t.expect(Selector('#el1').innerText).eql('');
+});
+
+test('Reused unawaited selector property assertion from a function', async t => {
+    async function assertionFunction () {
+        const selector = Selector('#el1');
+
+        await t.expect(selector.innerText).eql('');
+    }
+
+    await assertionFunction();
+    await assertionFunction();
+    await assertionFunction();
+});
+
+test('Reused awaited selector property assertion from a function', async t => {
+    async function assertionFunction () {
+        const selector = Selector('#el1');
+
+        await t.expect(await selector.innerText).eql('');
+    }
+
+    await assertionFunction();
+    await assertionFunction();
+    await assertionFunction();
+});
+
+test('Reused unawaited selector property assertion in a loop', async t => {
+    for (let i = 0; i < 3; i++)
+        await t.expect(Selector('#el1').innerText).eql('');
+});
+
+test('Reused awaited selector property assertion in a loop', async t => {
+    for (let i = 0; i < 3; i++)
+        await t.expect(await Selector('#el1').innerText).eql('');
+});
+
+test('Multiple awaited selector properties in one assertion', async t => {
+    const selector = Selector('#el1');
+
+    await t.expect(await selector.innerText + await selector.innerText).eql('');
 });

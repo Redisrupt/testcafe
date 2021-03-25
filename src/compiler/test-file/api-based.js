@@ -1,4 +1,9 @@
-import { dirname, relative, join, sep as pathSep } from 'path';
+import {
+    dirname,
+    relative,
+    sep as pathSep
+} from 'path';
+
 import { readFileSync } from 'fs';
 import stripBom from 'strip-bom';
 import TestFileCompilerBase from './base';
@@ -7,10 +12,9 @@ import Fixture from '../../api/structure/fixture';
 import Test from '../../api/structure/test';
 import { TestCompilationError, APIError } from '../../errors/runtime';
 import stackCleaningHook from '../../errors/stack-cleaning-hook';
+import NODE_MODULES from '../../shared/node-modules-folder-name';
 
 const CWD = process.cwd();
-
-const EXPORTABLE_LIB_PATH = join(__dirname, '../../api/exportable-lib');
 
 const FIXTURE_RE = /(^|;|\s+)fixture\s*(\.|\(|`)/;
 const TEST_RE    = /(^|;|\s+)test\s*(\.|\()/;
@@ -25,10 +29,6 @@ export default class APIBasedTestFileCompilerBase extends TestFileCompilerBase {
         this.origRequireExtensions = Object.create(null);
     }
 
-    static get EXPORTABLE_LIB_PATH () {
-        return EXPORTABLE_LIB_PATH;
-    }
-
     static _getNodeModulesLookupPath (filename) {
         const dir = dirname(filename);
 
@@ -38,7 +38,7 @@ export default class APIBasedTestFileCompilerBase extends TestFileCompilerBase {
     static _isNodeModulesDep (filename) {
         return relative(CWD, filename)
             .split(pathSep)
-            .indexOf('node_modules') >= 0;
+            .includes(NODE_MODULES);
     }
 
     static _execAsModule (code, filename) {
@@ -174,10 +174,13 @@ export default class APIBasedTestFileCompilerBase extends TestFileCompilerBase {
         return this._runCompiledCode(compiledCode, filename);
     }
 
-    compile (code, filename) {
-        const [compiledCode] = this.precompile([{ code, filename }]);
+    async compile (code, filename) {
+        const [compiledCode] = await this.precompile([{ code, filename }]);
 
-        return this.execute(compiledCode, filename);
+        if (compiledCode)
+            return this.execute(compiledCode, filename);
+
+        return Promise.resolve();
     }
 
     _hasTests (code) {

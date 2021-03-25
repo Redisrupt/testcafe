@@ -1,12 +1,11 @@
 import OS from 'os-family';
 import { parse as parseUrl } from 'url';
 import dedicatedProviderBase from '../base';
-import getRuntimeInfo from './runtime-info';
+import ChromeRunTimeInfo from './runtime-info';
 import getConfig from './config';
 import { start as startLocalChrome, stop as stopLocalChrome } from './local-chrome';
-import * as cdp from './cdp';
 import { GET_WINDOW_DIMENSIONS_INFO_SCRIPT } from '../../../utils/client-functions';
-
+import { BrowserClient } from './browser-client';
 
 const MIN_AVAILABLE_DIMENSION = 50;
 
@@ -17,39 +16,68 @@ export default {
         return getConfig(name);
     },
 
-    _getBrowserProtocolClient () {
-        return cdp;
+    _getBrowserProtocolClient (runtimeInfo) {
+        return runtimeInfo.browserClient;
     },
 
-    async openBrowser (browserId, pageUrl, configString, allowMultipleWindows) {
+    async _createRunTimeInfo (hostName, configString, disableMultipleWindows) {
+        return ChromeRunTimeInfo.create(hostName, configString, disableMultipleWindows);
+    },
+
+    _setUserAgentMetaInfoForEmulatingDevice (browserId, config) {
+        const { emulation, deviceName } = config;
+        const isDeviceEmulation         = emulation && deviceName;
+
+        if (!isDeviceEmulation)
+            return;
+
+        const metaInfo = `Emulating ${deviceName}`;
+        const options  = {
+            appendToUserAgent: true
+        };
+
+        this.setUserAgentMetaInfo(browserId, metaInfo, options);
+    },
+
+    async openBrowser (browserId, pageUrl, configString, disableMultipleWindows) {
         const parsedPageUrl = parseUrl(pageUrl);
-        const runtimeInfo   = await getRuntimeInfo(parsedPageUrl.hostname, configString, allowMultipleWindows);
+        const runtimeInfo   = await this._createRunTimeInfo(parsedPageUrl.hostname, configString, disableMultipleWindows);
 
         runtimeInfo.browserName = this._getBrowserName();
         runtimeInfo.browserId   = browserId;
 
         runtimeInfo.providerMethods = {
-            resizeLocalBrowserWindow: (...args) => this.resizeLocalBrowserWindow(...args)
+            resizeLocalBrowserWindow: (...args) => this.resizeLocalBrowserWindow(...args),
+            reportWarning:            (...args) => this.reportWarning(browserId, ...args)
         };
 
         await startLocalChrome(pageUrl, runtimeInfo);
 
         await this.waitForConnectionReady(browserId);
 
-        runtimeInfo.viewportSize = await this.runInitScript(browserId, GET_WINDOW_DIMENSIONS_INFO_SCRIPT);
+        runtimeInfo.viewportSize      = await this.runInitScript(browserId, GET_WINDOW_DIMENSIONS_INFO_SCRIPT);
+        runtimeInfo.activeWindowId    = null;
+        runtimeInfo.windowDescriptors = {};
 
-        await cdp.createClient(runtimeInfo);
+        if (!disableMultipleWindows)
+            runtimeInfo.activeWindowId = this.calculateWindowId();
+
+        const browserClient = new BrowserClient(runtimeInfo);
 
         this.openedBrowsers[browserId] = runtimeInfo;
 
+        await browserClient.init();
+
         await this._ensureWindowIsExpanded(browserId, runtimeInfo.viewportSize);
+
+        this._setUserAgentMetaInfoForEmulatingDevice(browserId, runtimeInfo.config);
     },
 
     async closeBrowser (browserId) {
         const runtimeInfo = this.openedBrowsers[browserId];
 
-        if (cdp.isHeadlessTab(runtimeInfo))
-            await cdp.closeTab(runtimeInfo);
+        if (runtimeInfo.browserClient.isHeadlessTab())
+            await runtimeInfo.browserClient.closeTab();
         else
             await this.closeLocalBrowser(browserId);
 
@@ -66,21 +94,24 @@ export default {
         const runtimeInfo = this.openedBrowsers[browserId];
 
         if (runtimeInfo.config.mobile)
-            await cdp.updateMobileViewportSize(runtimeInfo);
+            await runtimeInfo.browserClient.updateMobileViewportSize();
         else {
             runtimeInfo.viewportSize.width  = currentWidth;
             runtimeInfo.viewportSize.height = currentHeight;
         }
 
-        await cdp.resizeWindow({ width, height }, runtimeInfo);
+        await runtimeInfo.browserClient.resizeWindow({ width, height });
     },
 
     async getVideoFrameData (browserId) {
-        return await cdp.getScreenshotData(this.openedBrowsers[browserId]);
+        const { browserClient } = this.openedBrowsers[browserId];
+
+        return browserClient.getScreenshotData();
     },
 
     async hasCustomActionForBrowser (browserId) {
-        const { config, client } = this.openedBrowsers[browserId];
+        const { config, browserClient } = this.openedBrowsers[browserId];
+        const client                    = await browserClient.getActiveClient();
 
         return {
             hasCloseBrowser:                true,

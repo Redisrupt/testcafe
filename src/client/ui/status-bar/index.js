@@ -3,6 +3,7 @@ import testCafeCore from './../deps/testcafe-core';
 import ProgressBar from './progress-bar';
 import uiRoot from '../ui-root';
 import MESSAGES from './messages';
+import isIframeWindow from '../../../utils/is-window-in-iframe';
 
 
 const Promise          = hammerhead.Promise;
@@ -223,7 +224,7 @@ export default class StatusBar extends serviceUtils.EventEmitter {
     }
 
     _createBeforeReady () {
-        if (this.state.created || window !== window.top)
+        if (this.state.created || isIframeWindow(window))
             return;
 
         if (document.body)
@@ -233,7 +234,7 @@ export default class StatusBar extends serviceUtils.EventEmitter {
     }
 
     _animate (show) {
-        const startTime         = Date.now();
+        const startTime         = nativeMethods.dateNow();
         const startOpacityValue = parseInt(styleUtils.get(this.statusBar, 'opacity'), 10) || 0;
         let passedTime        = 0;
         let progress          = 0;
@@ -247,7 +248,7 @@ export default class StatusBar extends serviceUtils.EventEmitter {
         }
 
         this.animationInterval = nativeMethods.setInterval.call(window, () => {
-            passedTime = Date.now() - startTime;
+            passedTime = nativeMethods.dateNow() - startTime;
             progress   = Math.min(passedTime / ANIMATION_DELAY, 1);
             delta      = 0.5 - Math.cos(progress * Math.PI) / 2;
 
@@ -294,13 +295,13 @@ export default class StatusBar extends serviceUtils.EventEmitter {
 
     _bindHandlers () {
         listeners.initElementListening(window, ['resize']);
-        listeners.addInternalEventListener(window, ['resize'], () => {
+        listeners.addInternalEventBeforeListener(window, ['resize'], () => {
             this.windowHeight = window.innerHeight;
         });
 
         const statusBarHeight = styleUtils.getHeight(this.statusBar);
 
-        listeners.addFirstInternalHandler(window, ['mousemove', 'mouseout', 'touchmove'], e => {
+        listeners.addFirstInternalEventBeforeListener(window, ['mousemove', 'mouseout', 'touchmove'], e => {
             if (e.type === 'mouseout' && !e.relatedTarget)
                 this._fadeIn(e);
             else if (e.type === 'mousemove' || e.type === 'touchmove') {
@@ -320,7 +321,7 @@ export default class StatusBar extends serviceUtils.EventEmitter {
 
             if (isTargetElement) {
                 eventUtils.preventDefault(e);
-                listeners.removeInternalEventListener(window, [eventName], downHandler);
+                listeners.removeInternalEventBeforeListener(window, [eventName], downHandler);
 
                 handler(e);
             }
@@ -328,7 +329,7 @@ export default class StatusBar extends serviceUtils.EventEmitter {
                 eventUtils.preventDefault(e);
         };
 
-        listeners.addInternalEventListener(window, [eventName], downHandler);
+        listeners.addInternalEventBeforeListener(window, [eventName], downHandler);
     }
 
     _initChildListening () {
@@ -361,10 +362,10 @@ export default class StatusBar extends serviceUtils.EventEmitter {
     }
 
     _getFullStatusText (statusText) {
-        const prefixText = this.contextStorage.getItem(LOCAL_STORAGE_STATUS_PREFIX_ITEM);
-        const prefix     = prefixText ? `${prefixText}. ` : '';
+        const prefixText = this.contextStorage.getItem(LOCAL_STORAGE_STATUS_PREFIX_ITEM) || '';
+        const separator = prefixText && statusText ? '. ' : '';
 
-        return `${prefix}${statusText}`;
+        return prefixText + separator + statusText;
     }
 
     _showWaitingStatus () {
@@ -503,6 +504,6 @@ export default class StatusBar extends serviceUtils.EventEmitter {
 
     setStatusPrefix (prefixText) {
         this.contextStorage.setItem(LOCAL_STORAGE_STATUS_PREFIX_ITEM, prefixText);
-        this._resetState();
+        nativeMethods.nodeTextContentSetter.call(this.statusDiv, this._getFullStatusText(''));
     }
 }

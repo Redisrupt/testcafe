@@ -1,6 +1,9 @@
 import indentString from 'indent-string';
 
-const CONCATENATED_VALUES_SEPARATOR = ', ';
+const DEFAULT_CONCATENATED_VALUES = {
+    SEPARATOR:  ', ',
+    QUOTE_CHAR: '"'
+};
 
 function rtrim (str) {
     return str.replace(/\s+$/, '');
@@ -80,12 +83,36 @@ export function getPluralSuffix (array) {
     return array.length > 1 ? 's' : '';
 }
 
-export function getConcatenatedValuesString (array, separator) {
-    separator = separator || CONCATENATED_VALUES_SEPARATOR;
+function getDisplayedItemText (item, quote) {
+    return `${quote}${item}${quote}`;
+}
 
-    return array.map(item => `"${item}"`).join(separator);
+export function getConcatenatedValuesString (array, separator = DEFAULT_CONCATENATED_VALUES.SEPARATOR, quoteChar = DEFAULT_CONCATENATED_VALUES.QUOTE_CHAR) {
+    const clonedArray = [...array];
+
+    if (separator === '\n')
+        return clonedArray.map(item => getDisplayedItemText(item, quoteChar)).join(separator);
+
+    else if (clonedArray.length === 1)
+        return getDisplayedItemText(clonedArray[0], quoteChar);
+
+    else if (clonedArray.length === 2) {
+        const item1 = array[0];
+        const item2 = array[1];
+
+        return `${getDisplayedItemText(item1, quoteChar)} and ${getDisplayedItemText(item2, quoteChar)}`;
+    }
+
+    const lastItem        = clonedArray.pop();
+    const otherItemString = clonedArray.map(item => getDisplayedItemText(item, quoteChar)).join(separator);
+
+    return `${otherItemString}, and ${getDisplayedItemText(lastItem, quoteChar)}`;
 }
 
 export function getToBeInPastTense (array) {
     return array.length > 1 ? 'were' : 'was';
+}
+
+export function createList (array, PREFIX = '- ', SEPARATOR = '\n') {
+    return array.map(option => PREFIX + option).join(SEPARATOR);
 }
