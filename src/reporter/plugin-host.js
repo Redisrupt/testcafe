@@ -1,10 +1,16 @@
 import chalk from 'chalk';
 import indentString from 'indent-string';
-import { identity, escape as escapeHtml, assignIn } from 'lodash';
+import {
+    identity,
+    escape as escapeHtml,
+    assignIn
+} from 'lodash';
+
 import moment from '../utils/moment-loader';
 import OS from 'os-family';
 import { wordWrap, removeTTYColors } from '../utils/string';
 import getViewportWidth from '../utils/get-viewport-width';
+import { DIFF_COLORS } from '../utils/diff/colors';
 
 // NOTE: we should not expose internal state to
 // the plugin, to avoid accidental rewrites.
@@ -17,7 +23,10 @@ const indent          = Symbol();
 const errorDecorator  = Symbol();
 
 export default class ReporterPluginHost {
-    constructor (plugin, outStream) {
+    constructor (plugin, outStream, name) {
+        this.name             = name;
+        this.streamController = null;
+
         this[stream]          = outStream || process.stdout;
         this[wordWrapEnabled] = false;
         this[indent]          = 0;
@@ -57,6 +66,10 @@ export default class ReporterPluginHost {
             'span syntax-regex':      str => this.chalk.magenta(str),
             'span syntax-comment':    str => this.chalk.grey.bold(str),
             'span syntax-invalid':    str => this.chalk.inverse(str),
+
+            [`span ${DIFF_COLORS.DIFF_NOT_MODIFIED}`]: str => this.chalk.gray(str),
+            [`span ${DIFF_COLORS.DIFF_ADDED}`]:        str => this.chalk.green(str),
+            [`span ${DIFF_COLORS.DIFF_REMOVED}`]:      str => this.chalk.red(str),
 
             'div code-frame':         identity,
             'div code-line':          str => str + '\n',
@@ -105,7 +118,7 @@ export default class ReporterPluginHost {
 
     // Writing helpers
     newline () {
-        this[stream].write('\n');
+        this._writeToUniqueStream('\n');
 
         return this;
     }
@@ -116,7 +129,7 @@ export default class ReporterPluginHost {
         else
             text = this.indentString(text, this[indent]);
 
-        this[stream].write(text);
+        this._writeToUniqueStream(text);
 
         return this;
     }
@@ -133,9 +146,14 @@ export default class ReporterPluginHost {
         return this;
     }
 
+    _writeToUniqueStream (text) {
+        if (!this.streamController || this.streamController.ensureUniqueStream(this[stream], this))
+            this[stream].write(text);
+    }
+
 
     // Abstract methods implemented in plugin
-    async reportTaskStart (/* startTime, userAgents, testCount */) {
+    async reportTaskStart (/* startTime, userAgents, testCount, testStructure, taskProperties */) {
         throw new Error('Not implemented');
     }
 

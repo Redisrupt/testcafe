@@ -103,8 +103,10 @@ export default class ClientScript {
             else
                 this.content = initContent;
 
-            if (initPage)
+            if (initPage) {
+                // @ts-ignore
                 this.page = new RequestFilterRule(initPage);
+            }
         }
 
         this._calculateHash();

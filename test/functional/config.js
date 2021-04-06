@@ -1,7 +1,7 @@
 const os = require('os');
 
-const isTravisEnvironment = !!process.env.TRAVIS;
-const hostname            = isTravisEnvironment ? os.hostname() : '127.0.0.1';
+const isAzureEnvironment = !!process.env.TF_BUILD;
+const hostname           = isAzureEnvironment ? os.hostname() : '127.0.0.1';
 
 const browserProviderNames = {
     sauceLabs:    'sauceLabs',
@@ -25,14 +25,13 @@ const testingEnvironmentNames = {
 const testingEnvironments = {};
 
 testingEnvironments[testingEnvironmentNames.osXDesktopAndMSEdgeBrowsers] = {
-    jobName: 'functional tests - OS X desktop and MS edge browsers',
+    jobName:  'functional tests - OS X desktop and MS edge browsers',
+    provider: browserProviderNames.browserstack,
 
     browserstack: {
         username:  process.env.BROWSER_STACK_USERNAME,
         accessKey: process.env.BROWSER_STACK_ACCESS_KEY
     },
-
-    retryTestPages: true,
 
     browsers: [
         {
@@ -40,25 +39,28 @@ testingEnvironments[testingEnvironmentNames.osXDesktopAndMSEdgeBrowsers] = {
             alias:       'safari'
         },
         {
-            browserName: 'browserstack:chrome@71:OS X High Sierra',
+            browserName: 'browserstack:chrome@80:OS X High Sierra',
             alias:       'chrome-osx'
         },
         {
-            browserName: 'browserstack:firefox@64:OS X High Sierra',
+            browserName: 'browserstack:firefox@72:OS X High Sierra',
             alias:       'firefox-osx'
+        },
+        {
+            browserName: 'browserstack:edge:OS X High Sierra',
+            alias:       'edge'
         }
     ]
 };
 
 testingEnvironments[testingEnvironmentNames.mobileBrowsers] = {
-    jobName: 'functional tests - mobile browsers',
+    jobName:  'functional tests - mobile browsers',
+    provider: browserProviderNames.browserstack,
 
     browserstack: {
         username:  process.env.BROWSER_STACK_USERNAME,
         accessKey: process.env.BROWSER_STACK_ACCESS_KEY
     },
-
-    retryTestPages: true,
 
     browsers: [
         {
@@ -109,8 +111,6 @@ testingEnvironments[testingEnvironmentNames.localChrome] = {
 
 testingEnvironments[testingEnvironmentNames.localBrowsersIE] = {
     isLocalBrowsers: true,
-
-    retryTestPages: true,
 
     browsers: [
         {
@@ -171,7 +171,8 @@ testingEnvironments[testingEnvironmentNames.localHeadlessFirefox] = {
 };
 
 testingEnvironments[testingEnvironmentNames.remote] = {
-    remote: true,
+    remote:   true,
+    provider: browserProviderNames.remote,
 
     browsers: [{
         get qrCode () {
@@ -227,7 +228,7 @@ module.exports = {
         return this.currentEnvironment.retryTestPages;
     },
 
-    isTravisEnvironment,
+    isAzureEnvironment,
 
     testingEnvironmentNames,
     testingEnvironments,

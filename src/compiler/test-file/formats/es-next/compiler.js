@@ -1,65 +1,45 @@
-import loadBabelLibs from '../../../load-babel-libs';
+import loadBabelLibs from '../../../babel/load-libs';
 import APIBasedTestFileCompilerBase from '../../api-based';
+import isFlowCode from './is-flow-code';
+import BASE_BABEL_OPTIONS from '../../../babel/get-base-babel-options';
 
-const BABEL_RUNTIME_RE = /^babel-runtime(\\|\/|$)/;
-const FLOW_MARKER_RE   = /^\s*\/\/\s*@flow\s*\n|^\s*\/\*\s*@flow\s*\*\//;
+// const path = require('path');
 
-const path = require('path');
+// const tryRequire = module => {
+//     let mod;
 
-const tryRequire = module => {
-    let mod;
+//     try {
+//         mod = require(module);
+//     }
+//     catch (err) {
+//         /*  */
+//     }
 
-    try {
-        mod = require(module);
-    }
-    catch (err) {
-        /*  */
-    }
-
-    return mod;
-};
+//     return mod;
+// };
 
 export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase {
     static getBabelOptions (filename, code) {
-        const { presetStage2, presetFlow, transformRuntime, transformClassProperties, presetEnv } = loadBabelLibs();
+        const {
+            presetStage2,
+            presetFlow,
+            transformRuntime,
+            presetEnvForTestCode,
+            presetReact,
+            moduleResolver
+        } = loadBabelLibs();
 
-        // NOTE: passPrePreset and complex presets is a workaround for https://github.com/babel/babel/issues/2877
-        // Fixes https://github.com/DevExpress/testcafe/issues/969
-        return {
-            passPerPreset: true,
-            presets:       [
-                {
-                    passPerPreset: false,
-                    presets:       [{ plugins: [transformRuntime] }, presetStage2, presetEnv]
-                },
-                FLOW_MARKER_RE.test(code) ? {
-                    passPerPreset: false,
-                    presets:       [{ plugins: [transformClassProperties] }, presetFlow]
-                } : {}
-            ],
-            filename:      filename,
-            retainLines:   true,
-            sourceMaps:    'inline',
-            ast:           false,
-            babelrc:       false,
-            highlightCode: false,
+        const opts = Object.assign({}, BASE_BABEL_OPTIONS, {
+            presets:    [presetStage2, presetEnvForTestCode, presetReact],
+            plugins:    [transformRuntime, moduleResolver],
+            sourceMaps: 'inline',
+            filename
+        });
 
-            resolveModuleSource: source => {
-                if (source === 'testcafe')
-                    return APIBasedTestFileCompilerBase.EXPORTABLE_LIB_PATH;
+        if (isFlowCode(code))
+            opts.presets.push(presetFlow);
 
-                if (BABEL_RUNTIME_RE.test(source)) {
-                    try {
-                        return require.resolve(source);
-                    }
-                    catch (err) {
-                        return source;
-                    }
-                }
-
-                return source;
-            }
-        };
+        return opts;
     }
 
     canCompile (source, filename) {
@@ -70,7 +50,7 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
         const babel = require('@babel/core');
         const isTS = /\.ts$/.test(filename);
 
-        let opts = {
+        const opts = {
             filename:      filename,
             retainLines:   true,
             sourceMaps:    'inline',
@@ -122,20 +102,6 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
             ignore: ['node_modules/**/*.js'],
         };
 
-        const babelTestCafe = tryRequire(path.resolve(process.cwd(), path.join(process.cwd(), './testcafe-babel-config')));
-
-        if (babelTestCafe && babelTestCafe.processOptions) {
-            let retVal = babelTestCafe.processOptions(opts);
-
-            // if nothing is returned from the processOption fn we use the
-            // original values passed to the function this also means we can
-            // modify the opts we pass mutating opts
-            if (!retVal)
-                retVal = opts;
-
-            opts = retVal;
-        }
-
         if (this.cache[filename])
             return this.cache[filename];
 
@@ -144,6 +110,7 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
         this.cache[filename] = compiled.code;
 
         return compiled.code;
+
     }
 
     _getRequireCompilers () {

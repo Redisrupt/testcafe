@@ -19,7 +19,7 @@ export default {
 
     async _createMarionetteClient (runtimeInfo) {
         try {
-            const marionetteClient = new MarionetteClient(runtimeInfo.marionettePort);
+            const marionetteClient = new MarionetteClient(runtimeInfo.marionettePort, runtimeInfo);
 
             await marionetteClient.connect();
 
@@ -30,15 +30,19 @@ export default {
         }
     },
 
-    async openBrowser (browserId, pageUrl, configString) {
+    async openBrowser (browserId, pageUrl, configString, disableMultipleWindows) {
         const runtimeInfo = await getRuntimeInfo(configString);
 
-        runtimeInfo.browserName = this._getBrowserName();
-        runtimeInfo.browserId   = browserId;
+        runtimeInfo.browserName       = this._getBrowserName();
+        runtimeInfo.browserId         = browserId;
+        runtimeInfo.windowDescriptors = {};
 
         await startLocalFirefox(pageUrl, runtimeInfo);
 
         await this.waitForConnectionReady(runtimeInfo.browserId);
+
+        if (!disableMultipleWindows)
+            runtimeInfo.activeWindowId = this.calculateWindowId();
 
         if (runtimeInfo.marionettePort)
             runtimeInfo.marionetteClient = await this._createMarionetteClient(runtimeInfo);
@@ -47,7 +51,7 @@ export default {
     },
 
     async closeBrowser (browserId) {
-        const runtimeInfo = this.openedBrowsers[browserId];
+        const runtimeInfo                  = this.openedBrowsers[browserId];
         const { config, marionetteClient } = runtimeInfo;
 
         if (config.headless)
@@ -73,7 +77,7 @@ export default {
     async getVideoFrameData (browserId) {
         const { marionetteClient } = this.openedBrowsers[browserId];
 
-        return await marionetteClient.getScreenshotData();
+        return marionetteClient.getScreenshotData();
     },
 
     async hasCustomActionForBrowser (browserId) {

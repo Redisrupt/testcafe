@@ -4,7 +4,7 @@ import promisifyEvent from 'promisify-event';
 import BROWSER_JOB_RESULT from '../../runner/browser-job-result';
 import BrowserConnection from '../connection';
 import WARNING_MESSAGE from '../../notifications/warning-message';
-
+import { generateUniqueId } from 'testcafe-hammerhead';
 
 const name = Symbol();
 
@@ -23,16 +23,20 @@ export default class BrowserProviderPluginHost {
         return this[name];
     }
 
-    runInitScript (browserId, code) {
+    async runInitScript (browserId, code) {
         const connection = BrowserConnection.getById(browserId);
 
         return connection.runInitScript(`(${code})()`);
     }
 
+    calculateWindowId () {
+        return generateUniqueId();
+    }
+
     waitForConnectionReady (browserId) {
         const connection = BrowserConnection.getById(browserId);
 
-        if (connection.ready)
+        if (connection.isReady())
             return Promise.resolve();
 
         return promisifyEvent(connection, 'ready');
@@ -44,10 +48,10 @@ export default class BrowserProviderPluginHost {
         connection.addWarning(...args);
     }
 
-    setUserAgentMetaInfo (browserId, message) {
+    setUserAgentMetaInfo (browserId, message, ...args) {
         const connection = BrowserConnection.getById(browserId);
 
-        connection.setProviderMetaInfo(message);
+        connection.setProviderMetaInfo(message, ...args);
     }
 
     async closeLocalBrowser (browserId) {
@@ -94,12 +98,17 @@ export default class BrowserProviderPluginHost {
     }
 
     // Extra functions
-    // NOTE: The browserName argument is optional, and must be supplied if the browserId argument is not valid (browser is not opened)
+    // NOTE:
+    // The browserName argument is optional, and must be supplied if the browserId argument is not valid
+    // (browser is not opened)
     async isLocalBrowser (/* browserId[, browserName] */) {
         return false;
     }
 
-    isHeadlessBrowser (/* browserId */) {
+    // NOTE:
+    // The browserName argument is optional, and must be supplied if the browserId argument is not valid
+    // (browser is not opened)
+    isHeadlessBrowser (/* browserId[, browserName] */) {
         return false;
     }
 

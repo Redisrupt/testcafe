@@ -1,7 +1,12 @@
 import Replicator from 'replicator';
 import evalFunction from './eval-function';
-import { NodeSnapshot, ElementSnapshot } from './selector-executor/node-snapshots';
-import { DomNodeClientFunctionResultError, UncaughtErrorInCustomDOMPropertyCode } from '../../../../errors/test-run';
+import {
+    NodeSnapshot,
+    ElementSnapshot,
+    ElementActionSnapshot
+} from './selector-executor/node-snapshots';
+
+import { DomNodeClientFunctionResultError, UncaughtErrorInCustomDOMPropertyCode } from '../../../../shared/errors';
 import hammerhead from '../../deps/hammerhead';
 
 // NOTE: save original ctors because they may be overwritten by page code
@@ -34,8 +39,27 @@ export class FunctionTransform {
         return '';
     }
 
-    fromSerializable ({ fnCode, dependencies }) {
+    // HACK: UglifyJS + TypeScript + argument destructuring can generate incorrect code.
+    // So we have to use plain assignments here.
+    fromSerializable (opts) {
+        const fnCode       = opts.fnCode;
+        const dependencies = opts.dependencies;
+
         return evalFunction(fnCode, dependencies);
+    }
+}
+
+export class SelectorElementActionTransform {
+    constructor () {
+        this.type = 'Node';
+    }
+
+    shouldTransform (type, val) {
+        return val instanceof Node;
+    }
+
+    toSerializable (node) {
+        return new ElementActionSnapshot(node);
     }
 }
 

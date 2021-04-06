@@ -23,7 +23,7 @@ test('Simple test', async t => {
 });
 
 test('Simple command test', async t => {
-    await t.click(Selector('#target'));
+    await t.click(Selector('#target'), { offsetX: 10 });
 });
 
 test('Simple command err test', async t => {
@@ -62,4 +62,16 @@ test('Client Function', async () => {
 
 test('Eval', async t => {
     await t.eval(() => document.getElementById('#target'));
+});
+
+test('Screenshot on action error', async t => {
+    t.hover('body');
+
+    await t.click('#unexisting-element');
+});
+
+test('Action done after test done', async t => {
+    await t
+        .wait(5000)
+        .eval(() => location.reload(true));
 });

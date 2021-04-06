@@ -5,6 +5,7 @@ const tmp               = require('tmp');
 const { find }          = require('lodash');
 const CliArgumentParser = require('../../lib/cli/argument-parser');
 const nanoid            = require('nanoid');
+const runOptionNames    = require('../../lib/configuration/run-option-names');
 
 describe('CLI argument parser', function () {
     this.timeout(10000);
@@ -163,6 +164,45 @@ describe('CLI argument parser', function () {
 
         it('Should raise an error if the "--page-load-timeout" option value is not an integer', function () {
             return assertRaisesError('--page-load-timeout yo', 'Page load timeout is expected to be a non-negative number, but it was "yo".');
+        });
+    });
+
+    describe('Request timeout', () => {
+        describe('Page request timeout', () => {
+            it('Should parse the option as integer value', async () => {
+                const parser = await parse('--page-request-timeout 1000');
+
+                expect(parser.opts.pageRequestTimeout).eql(1000);
+            });
+
+            it('Should raise an error on invalid option value', () => {
+                return assertRaisesError('--page-request-timeout str', 'Page request timeout is expected to be a non-negative number, but it was "str".');
+            });
+        });
+
+        describe('Ajax request timeout', () => {
+            it('Should parse the option as integer value', async () => {
+                const parser = await parse('--ajax-request-timeout 1000');
+
+                expect(parser.opts.ajaxRequestTimeout).eql(1000);
+            });
+
+            it('Should raise an error on invalid option value', () => {
+                return assertRaisesError('--ajax-request-timeout str', 'Ajax request timeout is expected to be a non-negative number, but it was "str".');
+            });
+        });
+    });
+
+    describe('Browser initialization timeout', function () {
+        it('Should parse "--browser-init-timeout" option as integer value', function () {
+            return parse('--browser-init-timeout 1000')
+                .then(function (parser) {
+                    expect(parser.opts.browserInitTimeout).eql(1000);
+                });
+        });
+
+        it('Should raise an error if the "--browser-init-timeout" option value is not an integer', function () {
+            return assertRaisesError('--browser-init-timeout yo', 'Browser initialization timeout is expected to be a non-negative number, but it was "yo".');
         });
     });
 
@@ -558,6 +598,29 @@ describe('CLI argument parser', function () {
         });
     });
 
+    describe('Compiler options', () => {
+        it('Basic', async () => {
+            const cmd = '--compiler-options ' +
+                'typescript.options.skipLibCheck=true;' +
+                "typescript.options.lib=ES5,'WebWorker';" +
+                'typescript.configPath=/path-to-tsconfig.json';
+
+            const parser = await parse(cmd);
+
+            const typescriptCompilerOptions = parser.opts.compilerOptions.typescript;
+
+            expect(typescriptCompilerOptions.options.skipLibCheck).eql(true);
+            expect(typescriptCompilerOptions.options.lib).eql(['ES5', 'WebWorker']);
+            expect(typescriptCompilerOptions.configPath).eql('/path-to-tsconfig.json');
+        });
+
+        it('Array option with a single element', async () => {
+            const parser = await parse('--compiler-options typescript.options.lib=ES5');
+
+            expect(parser.opts.compilerOptions.typescript.options.lib).eql(['ES5']);
+        });
+    });
+
     it('Client scripts', () => {
         return parse('--client-scripts asserts/jquery.js,mockDate.js')
             .then(parser => {
@@ -582,7 +645,7 @@ describe('CLI argument parser', function () {
     });
 
     it('Should parse command line arguments', function () {
-        return parse('-r list -S -q -e --hostname myhost --proxy localhost:1234 --proxy-bypass localhost:5678 --qr-code --app run-app --speed 0.5 --debug-on-fail --disable-page-reloads --dev --sf --disable-page-caching ie test/server/data/file-list/file-1.js')
+        return parse('-r list -S -q -e --hostname myhost --proxy localhost:1234 --proxy-bypass localhost:5678 --qr-code --app run-app --speed 0.5 --debug-on-fail --disable-page-reloads --retry-test-pages --dev --sf --disable-page-caching ie test/server/data/file-list/file-1.js')
             .then(parser => {
                 expect(parser.opts.browsers).eql(['ie']);
                 expect(parser.opts.src).eql(['test/server/data/file-list/file-1.js']);
@@ -595,7 +658,6 @@ describe('CLI argument parser', function () {
                 expect(parser.opts.screenshots.pathPattern).to.be.undefined;
                 expect(parser.opts.quarantineMode).to.be.ok;
                 expect(parser.opts.skipJsErrors).to.be.ok;
-                expect(parser.opts.disablePageReloads).to.be.ok;
                 expect(parser.opts.dev).to.be.ok;
                 expect(parser.opts.speed).eql(0.5);
                 expect(parser.opts.qrCode).to.be.ok;
@@ -604,11 +666,16 @@ describe('CLI argument parser', function () {
                 expect(parser.opts.debugOnFail).to.be.ok;
                 expect(parser.opts.stopOnFirstFail).to.be.ok;
                 expect(parser.opts.disablePageCaching).to.be.ok;
+                expect(parser.opts.disablePageReloads).to.be.ok;
+                expect(parser.opts.retryTestPages).to.be.ok;
             });
     });
 
     it('Should have static CLI', () => {
-        const WARNING          = 'IMPORTANT: Please be sure what you want to change CLI if this test is failing!';
+        const CHANGE_CLI_WARNING         = 'IMPORTANT: Please be sure what you want to change CLI if this test is failing!';
+        const ADD_TO_RUN_OPTIONS_WARNING = 'Check that the added option is correctly passed from the command-line interface to the run options.' +
+                                           'If the new option is not a run option just increase the "expectedOtherOptionsCount" value';
+
         const EXPECTED_OPTIONS = [
             { long: '--version', short: '-v' },
             { long: '--list-browsers', short: '-b' },
@@ -633,6 +700,7 @@ describe('CLI argument parser', function () {
             { long: '--selector-timeout' },
             { long: '--assertion-timeout' },
             { long: '--page-load-timeout' },
+            { long: '--browser-init-timeout' },
             { long: '--speed' },
             { long: '--ports' },
             { long: '--hostname' },
@@ -648,27 +716,41 @@ describe('CLI argument parser', function () {
             { long: '--video' },
             { long: '--video-options' },
             { long: '--video-encoding-options' },
+            { long: '--config-file' },
             { long: '--ts-config-path' },
             { long: '--client-scripts', short: '--cs' },
             { long: '--disable-page-caching' },
             { long: '--disable-page-reloads' },
+            { long: '--retry-test-pages' },
             { long: '--disable-screenshots' },
             { long: '--screenshots-full-page' },
-            { long: '--allow-multiple-windows', short: '-m' }
+            { long: '--disable-multiple-windows' },
+            { long: '--experimental-compiler-service' },
+            { long: '--compiler-options' },
+            { long: '--page-request-timeout' },
+            { long: '--ajax-request-timeout' },
+            { long: '--cache' }
         ];
 
         const parser  = new CliArgumentParser('');
-        const options = parser.program.options;
+        const options = [ ...parser.program.options, ...parser.experimental.options];
 
-        expect(options.length).eql(EXPECTED_OPTIONS.length, WARNING);
+        expect(options.length).eql(EXPECTED_OPTIONS.length, CHANGE_CLI_WARNING);
 
         for (let i = 0; i < EXPECTED_OPTIONS.length; i++) {
             const option = find(options, EXPECTED_OPTIONS[i]);
 
-            expect(option).not.eql(void 0, WARNING);
-            expect(option.long).eql(EXPECTED_OPTIONS[i].long, WARNING);
-            expect(option.short).eql(EXPECTED_OPTIONS[i].short, WARNING);
+            expect(option).not.eql(void 0, CHANGE_CLI_WARNING);
+            expect(option.long).eql(EXPECTED_OPTIONS[i].long, CHANGE_CLI_WARNING);
+            expect(option.short).eql(EXPECTED_OPTIONS[i].short, CHANGE_CLI_WARNING);
         }
+
+        const expectedRunOptionsCount   = 18;
+        const expectedOtherOptionsCount = 35;
+        const otherOptionsCount         = options.length - expectedRunOptionsCount;
+
+        expect(runOptionNames.length).eql(expectedRunOptionsCount, ADD_TO_RUN_OPTIONS_WARNING);
+        expect(otherOptionsCount).eql(expectedOtherOptionsCount, ADD_TO_RUN_OPTIONS_WARNING);
     });
 
     it('Run options', () => {
@@ -682,12 +764,13 @@ describe('CLI argument parser', function () {
             '--selector-timeout 1000',
             '--assertion-timeout 1000',
             '--page-load-timeout 1000',
+            '--browser-init-timeout 1000',
             '--speed 1',
             '--stop-on-first-fail',
             '--disable-page-caching',
             '--disable-page-reloads',
             '--disable-screenshots',
-            '--allow-multiple-windows'
+            '--disable-multiple-windows'
         ].join(' ');
 
         return parse(argumentsString)
@@ -702,11 +785,13 @@ describe('CLI argument parser', function () {
                 expect(runOpts.selectorTimeout).eql(1000);
                 expect(runOpts.assertionTimeout).eql(1000);
                 expect(runOpts.pageLoadTimeout).eql(1000);
+                expect(runOpts.browserInitTimeout).eql(1000);
                 expect(runOpts.speed).eql(1);
                 expect(runOpts.stopOnFirstFail).eql(true);
                 expect(runOpts.disablePageCaching).eql(true);
                 expect(runOpts.disablePageReloads).eql(true);
                 expect(runOpts.disableScreenshots).eql(true);
+                expect(runOpts.disableMultipleWindows).eql(true);
                 expect(runOpts.browsers).to.be.undefined;
             });
     });

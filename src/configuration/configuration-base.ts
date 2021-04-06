@@ -1,7 +1,13 @@
 import { isAbsolute } from 'path';
 import debug from 'debug';
 import JSON5 from 'json5';
-import { castArray, cloneDeep, isPlainObject, mergeWith } from 'lodash';
+import {
+    castArray,
+    cloneDeep,
+    isPlainObject,
+    mergeWith
+} from 'lodash';
+
 import { stat, readFile } from '../utils/promisified-functions';
 import Option from './option';
 import OptionSource from './option-source';
@@ -92,11 +98,15 @@ export default class Configuration {
         return option.value;
     }
 
-    public getOptions (): Dictionary<OptionValue> {
-        const result = Object.create(null);
+    public getOptions (predicate?: (name: string, option: Option) => boolean): Dictionary<OptionValue> {
+        const result        = Object.create(null);
+        let includeInResult = true;
 
         Object.entries(this._options).forEach(([name, option]) => {
-            result[name] = option.value;
+            includeInResult = predicate ? predicate(name, option) : true;
+
+            if (includeInResult)
+                result[name] = option.value;
         });
 
         return result;

@@ -1,13 +1,20 @@
 import path from 'path';
 import fs from 'fs';
 import isCI from 'is-ci';
-import { isUndefined, filter, flatten, chunk, times } from 'lodash';
+import {
+    flatten,
+    chunk,
+    times
+} from 'lodash';
+
 import makeDir from 'make-dir';
 import OS from 'os-family';
+import debug from 'debug';
+import prettyTime from 'pretty-hrtime';
 import { errors, findWindow } from 'testcafe-browser-tools';
 import authenticationHelper from '../cli/authentication-helper';
 import Compiler from '../compiler';
-import BrowserConnection from '../browser/connection';
+import BrowserConnection, { BrowserInfo } from '../browser/connection';
 import browserProviderPool from '../browser/provider/pool';
 import BrowserSet from './browser-set';
 import RemoteBrowserProvider from '../browser/provider/built-in/remote';
@@ -17,71 +24,35 @@ import TestedApp from './tested-app';
 import parseFileList from '../utils/parse-file-list';
 import resolvePathRelativelyCwd from '../utils/resolve-path-relatively-cwd';
 import loadClientScripts from '../custom-client-scripts/load';
+import { getConcatenatedValuesString } from '../utils/string';
 
 import { Writable as WritableStream } from 'stream';
+import { ReporterSource, ReporterPluginSource } from '../reporter/interfaces';
 import ClientScript from '../custom-client-scripts/client-script';
 import ClientScriptInit from '../custom-client-scripts/client-script-init';
-import BrowserProvider from '../browser/provider';
+import BrowserConnectionGateway from '../browser/connection/gateway';
+import { CompilerArguments } from '../compiler/interfaces';
+import CompilerService from '../services/compiler/host';
+import { Metadata } from '../api/structure/interfaces';
+import Test from '../api/structure/test';
+import detectDisplay from '../utils/detect-display';
+import { getPluginFactory, processReporterName } from '../utils/reporter';
+import { BootstrapperInit, BrowserSetOptions } from './interfaces';
+import WarningLog from '../notifications/warning-log';
+import WARNING_MESSAGES from '../notifications/warning-message';
+import guardTimeExecution from '../utils/guard-time-execution';
 
-type BrowserConnectionGateway = unknown;
+const DEBUG_SCOPE = 'testcafe:bootstrapper';
 
 type TestSource = unknown;
 
-type ReporterPlugin = unknown;
-
-interface CompilerArguments {
-    parsedFileList: string[];
-    compilerOptions: object;
-}
-
-interface Metadata {
-    [key: string]: string;
-}
-
 type BrowserSource = BrowserConnection | string;
-
-interface ReporterSource {
-    name: string;
-    output?: string | WritableStream;
-}
-
-interface ReporterPluginSource {
-    plugin: ReporterPlugin;
-    outStream?: WritableStream;
-}
-
-interface ReporterPluginFactory {
-    (): ReporterPlugin;
-}
-
-function isReporterPluginFactory (value: string | Function): value is ReporterPluginFactory {
-    return typeof value === 'function';
-}
 
 interface Filter {
     (testName: string, fixtureName: string, fixturePath: string, testMeta: Metadata, fixtureMeta: Metadata): boolean;
 }
 
-interface BrowserInfo {
-    browserName: string;
-    providerName: string;
-    provider: BrowserProvider;
-}
-
 type BrowserInfoSource = BrowserInfo | BrowserConnection;
-
-
-interface Fixture {
-    name: string;
-    path: string;
-    meta: Metadata;
-}
-
-interface Test {
-    name: string;
-    fixture: Fixture;
-    meta: Metadata;
-}
 
 interface PromiseSuccess<T> {
     result: T;
@@ -121,7 +92,6 @@ type ResultCollection<T> = { [P in keyof T]: PromiseResult<T[P]> };
 
 export default class Bootstrapper {
     private readonly browserConnectionGateway: BrowserConnectionGateway;
-
     public concurrency: number;
     public sources: TestSource[];
     public browsers: BrowserSource[];
@@ -131,9 +101,17 @@ export default class Bootstrapper {
     public appInitDelay?: number;
     public tsConfigPath?: string;
     public clientScripts: ClientScriptInit[];
-    public allowMultipleWindows: boolean;
+    public disableMultipleWindows: boolean;
+    public compilerOptions?: CompilerOptions;
+    public browserInitTimeout?: number;
 
-    public constructor (browserConnectionGateway: BrowserConnectionGateway) {
+    private readonly compilerService?: CompilerService;
+    private readonly debugLogger: debug.Debugger;
+    private readonly warningLog: WarningLog;
+
+    private readonly TESTS_COMPILATION_UPPERBOUND: number;
+
+    public constructor ({ browserConnectionGateway, compilerService }: BootstrapperInit) {
         this.browserConnectionGateway = browserConnectionGateway;
         this.concurrency              = 1;
         this.sources                  = [];
@@ -144,7 +122,13 @@ export default class Bootstrapper {
         this.appInitDelay             = void 0;
         this.tsConfigPath             = void 0;
         this.clientScripts            = [];
-        this.allowMultipleWindows     = false;
+        this.disableMultipleWindows   = false;
+        this.compilerOptions          = void 0;
+        this.debugLogger              = debug(DEBUG_SCOPE);
+        this.warningLog               = new WarningLog();
+        this.compilerService          = compilerService;
+
+        this.TESTS_COMPILATION_UPPERBOUND = 60;
     }
 
     private static _getBrowserName (browser: BrowserInfoSource): string {
@@ -200,6 +184,23 @@ export default class Bootstrapper {
         RemoteBrowserProvider.canDetectLocalBrowsers = false;
     }
 
+    private static async _checkThatTestsCanRunWithoutDisplay (browserInfoSource: BrowserInfoSource[]): Promise<void> {
+        for (let browserInfo of browserInfoSource) {
+            if (browserInfo instanceof BrowserConnection)
+                browserInfo = browserInfo.browserInfo;
+
+            const isLocalBrowser    = await browserInfo.provider.isLocalBrowser(void 0, browserInfo.browserName);
+            const isHeadlessBrowser = await browserInfo.provider.isHeadlessBrowser(void 0, browserInfo.browserName);
+
+            if (isLocalBrowser && !isHeadlessBrowser) {
+                throw new GeneralError(
+                    RUNTIME_ERRORS.cannotRunLocalNonHeadlessBrowserWithoutDisplay,
+                    browserInfo.alias
+                );
+            }
+        }
+    }
+
     private async _getBrowserInfo (): Promise<BrowserInfoSource[]> {
         if (!this.browsers.length)
             throw new GeneralError(RUNTIME_ERRORS.browserNotSet);
@@ -214,7 +215,15 @@ export default class Bootstrapper {
             return [];
 
         return browserInfo
-            .map(browser => times(this.concurrency, () => new BrowserConnection(this.browserConnectionGateway, browser, false, this.allowMultipleWindows)));
+            .map(browser => times(this.concurrency, () => new BrowserConnection(this.browserConnectionGateway, browser, false, this.disableMultipleWindows)));
+    }
+
+    private _getBrowserSetOptions (): BrowserSetOptions {
+        return {
+            concurrency:        this.concurrency,
+            browserInitTimeout: this.browserInitTimeout,
+            warningLog:         this.warningLog
+        };
     }
 
     private async _getBrowserConnections (browserInfo: BrowserInfoSource[]): Promise<BrowserSet> {
@@ -227,46 +236,59 @@ export default class Bootstrapper {
 
         browserConnections = browserConnections.concat(chunk(remotes, this.concurrency));
 
-        return await BrowserSet.from(browserConnections);
+        return BrowserSet.from(browserConnections, this._getBrowserSetOptions());
     }
 
     private _filterTests (tests: Test[], predicate: Filter): Test[] {
-        return tests.filter(test => predicate(test.name, test.fixture.name, test.fixture.path, test.meta, test.fixture.meta));
+        return tests.filter(test => predicate(test.name as string, test.fixture.name as string, test.fixture.path, test.meta, test.fixture.meta));
+    }
+
+    private async _compileTests ({ sourceList, compilerOptions }: CompilerArguments): Promise<Test[]> {
+        if (this.compilerService) {
+            await this.compilerService.init();
+
+            return this.compilerService.getTests({ sourceList, compilerOptions });
+        }
+
+        const compiler = new Compiler(sourceList, compilerOptions);
+
+        return compiler.getTests();
     }
 
     private async _getTests (): Promise<Test[]> {
-        const { parsedFileList, compilerOptions } = await this._getCompilerArguments();
+        const cwd        = process.cwd();
+        const sourceList = await parseFileList(this.sources, cwd);
 
-        if (!parsedFileList.length)
-            throw new GeneralError(RUNTIME_ERRORS.testFilesNotFound);
+        if (!sourceList.length)
+            throw new GeneralError(RUNTIME_ERRORS.testFilesNotFound, getConcatenatedValuesString(this.sources, '\n', ''), cwd);
 
-        const compiler = new Compiler(parsedFileList, compilerOptions);
-        let tests      = await compiler.getTests();
+        let tests = await guardTimeExecution(
+            async () => await this._compileTests({ sourceList, compilerOptions: this.compilerOptions }),
+            elapsedTime => {
+                this.debugLogger(`tests compilation took ${prettyTime(elapsedTime)}`);
+
+                const [ elapsedSeconds ] = elapsedTime;
+
+                if (elapsedSeconds > this.TESTS_COMPILATION_UPPERBOUND)
+                    this.warningLog.addWarning(WARNING_MESSAGES.testsCompilationTakesTooLong, prettyTime(elapsedTime));
+            }
+        );
 
         const testsWithOnlyFlag = tests.filter(test => test.only);
 
         if (testsWithOnlyFlag.length)
             tests = testsWithOnlyFlag;
 
+        if (!tests.length)
+            throw new GeneralError(RUNTIME_ERRORS.noTestsToRun);
+
         if (this.filter)
             tests = this._filterTests(tests, this.filter);
 
         if (!tests.length)
-            throw new GeneralError(RUNTIME_ERRORS.noTestsToRun);
+            throw new GeneralError(RUNTIME_ERRORS.noTestsToRunDueFiltering);
 
         return tests;
-    }
-
-    private async _getCompilerArguments (): Promise<CompilerArguments> {
-        const parsedFileList = await parseFileList(this.sources, process.cwd());
-
-        const compilerOptions = {
-            typeScriptOptions: {
-                tsConfigPath: this.tsConfigPath
-            }
-        };
-
-        return { parsedFileList, compilerOptions };
     }
 
     private async _ensureOutStream (outStream: string | WritableStream): Promise<WritableStream> {
@@ -287,37 +309,18 @@ export default class Bootstrapper {
         });
     }
 
-    private _requireReporterPluginFactory (reporterName: string): ReporterPluginFactory {
-        try {
-            return require('testcafe-reporter-' + reporterName);
-        }
-        catch (err) {
-            throw new GeneralError(RUNTIME_ERRORS.cannotFindReporterForAlias, reporterName);
-        }
-    }
-
-    private _getPluginFactory (reporterFactorySource: string | ReporterPluginFactory): ReporterPluginFactory {
-        if (!isReporterPluginFactory(reporterFactorySource))
-            return this._requireReporterPluginFactory(reporterFactorySource);
-
-        return reporterFactorySource;
-    }
-
     private async _getReporterPlugins (): Promise<ReporterPluginSource[]> {
-        const stdoutReporters = filter(this.reporters, r => isUndefined(r.output) || r.output === process.stdout);
-
-        if (stdoutReporters.length > 1)
-            throw new GeneralError(RUNTIME_ERRORS.multipleStdoutReporters, stdoutReporters.map(r => r.name).join(', '));
-
         if (!this.reporters.length)
             Bootstrapper._addDefaultReporter(this.reporters);
 
         return Promise.all(this.reporters.map(async ({ name, output }) => {
-            const pluginFactory = this._getPluginFactory(name);
+            const pluginFactory = getPluginFactory(name);
+            const processedName = processReporterName(name);
             const outStream     = output ? await this._ensureOutStream(output) : void 0;
 
             return {
                 plugin: pluginFactory(),
+                name:   processedName,
                 outStream
             };
         }));
@@ -329,7 +332,7 @@ export default class Bootstrapper {
 
         const testedApp = new TestedApp();
 
-        await testedApp.start(this.appCommand, this.appInitDelay);
+        await testedApp.start(this.appCommand, this.appInitDelay as number);
 
         return testedApp;
     }
@@ -423,6 +426,9 @@ export default class Bootstrapper {
 
         if (OS.mac)
             await Bootstrapper._checkRequiredPermissions(browserInfo);
+
+        if (OS.linux && !detectDisplay())
+            await Bootstrapper._checkThatTestsCanRunWithoutDisplay(browserInfo);
 
         if (await this._canUseParallelBootstrapping(browserInfo))
             return { reporterPlugins, ...await this._bootstrapParallel(browserInfo), commonClientScripts };

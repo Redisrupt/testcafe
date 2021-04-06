@@ -1,11 +1,14 @@
 // NOTE: to preserve callsites, add new tests AFTER the existing ones
 import { ClientFunction } from 'testcafe';
 import { expect } from 'chai';
-import { saveWindowState, restoreWindowState } from '../../../../../window-helpers';
 
+import {
+    saveWindowState,
+    restoreWindowState,
+    getWindowHeight,
+    getWindowWidth
+} from '../../../../../window-helpers';
 
-const getWindowWidth  = ClientFunction(() => window.innerWidth);
-const getWindowHeight = ClientFunction(() => window.innerHeight);
 
 const setWindowOnresizeHandler = ClientFunction(() => {
     window.onresize = function () {
@@ -53,10 +56,13 @@ test('Resize the window to fit a device', async t => {
 });
 
 test('Resize the window to fit a device with portrait orientation', async t => {
-    await t.resizeWindowToFitDevice('iPhone', { portraitOrientation: true });
+    // NOTE: Firefox 74 cannot set its width less than ~450px in both the headless and non-headless modes.
+    const iPadSize = { width: 1024, height: 768 };
 
-    expect(await getWindowWidth()).equals(iPhoneSize.height);
-    expect(await getWindowHeight()).equals(iPhoneSize.width);
+    await t.resizeWindowToFitDevice('iPad', { portraitOrientation: true });
+
+    expect(await getWindowWidth()).equals(iPadSize.height);
+    expect(await getWindowHeight()).equals(iPadSize.width);
 });
 
 

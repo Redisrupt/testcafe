@@ -1,26 +1,52 @@
-const { noop } = require('lodash');
-const nanoid   = require('nanoid');
-const expect   = require('chai').expect;
+const proxyquire = require('proxyquire');
+const { noop }   = require('lodash');
+const nanoid     = require('nanoid');
+const expect     = require('chai').expect;
 
-const TestRun        = require('../../lib/test-run/index');
+const SessionControllerStub = { getSession: () => {
+    return { id: nanoid(7) };
+} };
+
+const TestRun        = proxyquire('../../lib/test-run/index', { './session-controller': SessionControllerStub });
 const TestController = require('../../lib/api/test-controller');
 const COMMAND_TYPE   = require('../../lib/test-run/commands/type');
 const markerSymbol   = require('../../lib/test-run/marker-symbol');
-const debugLogger    = require('../../lib/notifications/debug-logger');
 
-const assertTestRunError = require('./helpers/assert-test-run-error');
+const assertTestRunError         = require('./helpers/assert-test-run-error');
+const { createSimpleTestStream } = require('../functional/utils/stream');
 
 let callsite = 0;
 
-function createTestRunMock () {
-    function TestRunMock () {
-        this.session         = { id: nanoid(7) };
-        this.test            = { name: 'Test', testFile: { filename: __filename } };
+class TestRunMock extends TestRun {
+    _addInjectables () {}
+
+    _initRequestHooks () {}
+
+    get id () {
+        return 'test-run-id';
+    }
+
+    constructor () {
+        super({
+            test:               { name: 'Test', testFile: { filename: __filename } },
+            browserConnection:  {},
+            screenshotCapturer: {},
+            globalWarningLog:   {},
+            opts:               {}
+        });
+
         this.debugLog        = { command: noop };
         this.controller      = new TestController(this);
         this.driverTaskQueue = [];
         this.emit            = noop;
-        this.debugLogger     = debugLogger;
+        this.stubStream      = createSimpleTestStream();
+
+        const stubModule = require('log-update-async-hook').create(this.stubStream);
+
+        this.debugLogger = proxyquire('../../lib/notifications/debug-logger', { 'log-update-async-hook': stubModule } );
+
+        this.debugLogger._overrideStream(this.stubStream);
+        this.debugLogger.streamsOverridden = true;
 
         this[markerSymbol] = true;
 
@@ -29,13 +55,9 @@ function createTestRunMock () {
             userAgent:         'Chrome'
         };
     }
-
-    TestRunMock.prototype = TestRun.prototype;
-
-    return new TestRunMock();
 }
 
-async function executeAsyncExpression (expression, testRun = createTestRunMock()) {
+async function executeAsyncExpression (expression, testRun = new TestRunMock()) {
     callsite++;
 
     return await testRun.executeCommand({
@@ -44,7 +66,7 @@ async function executeAsyncExpression (expression, testRun = createTestRunMock()
     }, callsite.toString());
 }
 
-async function executeExpression (expression, customVarName, testRun = createTestRunMock()) {
+async function executeExpression (expression, customVarName, testRun = new TestRunMock()) {
     return testRun.executeCommand({
         type:               COMMAND_TYPE.executeExpression,
         resultVariableName: customVarName,
@@ -123,7 +145,7 @@ describe('Code steps', () => {
     });
 
     it('sync expression does not spoil global context', async () => {
-        const testRun = createTestRunMock();
+        const testRun = new TestRunMock();
 
         await executeExpression('1+1', 'myCustomVar1', testRun);
         await executeExpression('1+myCustomVar1', 'myCustomVar2', testRun);
@@ -136,7 +158,7 @@ describe('Code steps', () => {
     });
 
     it('shared context with global variables', async () => {
-        const testRun = createTestRunMock();
+        const testRun = new TestRunMock();
 
         await executeAsyncExpression('result = 10;', testRun);
 
@@ -147,7 +169,7 @@ describe('Code steps', () => {
     });
 
     it('shared context with local variables', async () => {
-        const testRun = createTestRunMock();
+        const testRun = new TestRunMock();
 
         await executeAsyncExpression('const result = 10;', testRun);
 
@@ -192,9 +214,9 @@ describe('Code steps', () => {
                     resolve('hooray!');
                 }, 20);
             });
-            
+
             const result = await promise;
-            
+
             return result;
         `)
             .then(result => {
@@ -231,7 +253,7 @@ describe('Code steps', () => {
             clearTimeout(timeout);
             clearImmediate(immediate);
             clearInterval(interval);
-            
+
             return { __dirname, __filename };
         `);
 
@@ -258,7 +280,7 @@ describe('Code steps', () => {
         });
 
         it('shared context', async () => {
-            const testRun = createTestRunMock();
+            const testRun = new TestRunMock();
 
             await executeAsyncExpression(`
                 t.testRun.sharedVar = 1;
@@ -273,8 +295,8 @@ describe('Code steps', () => {
         });
 
         it('different context', async () => {
-            const testRun1 = createTestRunMock();
-            const testRun2 = createTestRunMock();
+            const testRun1 = new TestRunMock();
+            const testRun2 = new TestRunMock();
 
             await executeAsyncExpression(`
                 t.testRun.sharedVar = 1;
@@ -290,17 +312,10 @@ describe('Code steps', () => {
         });
 
         it('debug', async () => {
-            const testRun = createTestRunMock();
-            let debugMsg  = '';
+            const testRun = new TestRunMock();
             let err       = null;
 
             testRun._enqueueCommand = () => Promise.resolve();
-
-            const initialWrite = process.stdout.write;
-
-            process.stdout.write = chunk => {
-                debugMsg += chunk.toString();
-            };
 
             try {
                 await executeAsyncExpression('await t.debug();', testRun);
@@ -309,11 +324,9 @@ describe('Code steps', () => {
                 err = e;
             }
 
-            process.stdout.write = initialWrite;
-
             expect(err).eql(null);
-            expect(debugMsg).contains('Chrome');
-            expect(debugMsg).contains('DEBUGGER PAUSE');
+            expect(testRun.stubStream.data).contains('Chrome');
+            expect(testRun.stubStream.data).contains('DEBUGGER PAUSE');
         });
     });
 });

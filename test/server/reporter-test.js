@@ -1,20 +1,41 @@
-const { expect }        = require('chai');
-const { chunk, random } = require('lodash');
-const Reporter          = require('../../lib/reporter');
-const AsyncEventEmitter = require('../../lib/utils/async-event-emitter');
-const delay             = require('../../lib/utils/delay');
+const chai                            = require('chai');
+const { expect }                      = chai;
+const { chunk, random, noop, sortBy } = require('lodash');
+const Reporter                        = require('../../lib/reporter');
+const ReporterPluginMethod            = require('../../lib/reporter/plugin-methods');
+const Task                            = require('../../lib/runner/task');
+const Videos                          = require('../../lib/video-recorder/videos');
+const delay                           = require('../../lib/utils/delay');
+const { ReporterPluginError }         = require('../../lib/errors/runtime');
+const WarningLog                      = require('../../lib/notifications/warning-log');
+
+chai.use(require('chai-string'));
 
 describe('Reporter', () => {
-    // Runnable configuration mocks
     const screenshotDir = '/screenshots/1445437598847';
 
     const browserConnectionMocks = [
-        { userAgent: 'Chrome' },
-        { userAgent: 'Firefox' }
+        {
+            userAgent:   'Chrome',
+            browserInfo: {
+                alias:           'Chrome',
+                parsedUserAgent: { userAgent: 'Chrome' }
+            },
+            isHeadlessBrowser: () => false
+        },
+        {
+            userAgent:   'Firefox',
+            browserInfo: {
+                alias:           'Firefox',
+                parsedUserAgent: { userAgent: 'Firefox' }
+            },
+            isHeadlessBrowser: () => false
+        }
     ];
 
     const fixtureMocks = [
         {
+            id:   'fid1',
             name: 'fixture1',
             path: './file1.js',
             meta: {
@@ -22,6 +43,7 @@ describe('Reporter', () => {
             }
         },
         {
+            id:   'fid2',
             name: 'fixture2',
             path: './file1.js',
             meta: {
@@ -29,6 +51,7 @@ describe('Reporter', () => {
             }
         },
         {
+            id:   'fid3',
             name: 'fixture3',
             path: './file2.js',
             meta: null
@@ -37,86 +60,113 @@ describe('Reporter', () => {
 
     const testMocks = [
         {
+            id:          'idf1t1',
             name:        'fixture1test1',
+            pageUrl:     'urlf1t1',
             fixture:     fixtureMocks[0],
             skip:        false,
             screenshots: [{
+                testRunId:         'idf1t1-1',
                 screenshotPath:    'screenshot1.png',
                 thumbnailPath:     'thumbnail1.png',
                 userAgent:         'chrome',
                 takenOnFail:       false,
                 quarantineAttempt: 2
             }],
-            meta: {
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         },
         {
+            id:          'idf1t2',
             name:        'fixture1test2',
+            pageUrl:     'urlf1t2',
             fixture:     fixtureMocks[0],
             skip:        false,
             screenshots: [{
+                testRunId:         'idf1t2-1',
                 screenshotPath:    'screenshot1.png',
                 thumbnailPath:     'thumbnail1.png',
                 userAgent:         'chrome',
                 takenOnFail:       false,
                 quarantineAttempt: null
             }, {
+                testRunId:         'idf1t2-2',
                 screenshotPath:    'screenshot2.png',
                 thumbnailPath:     'thumbnail2.png',
                 userAgent:         'chrome',
                 takenOnFail:       true,
                 quarantineAttempt: null
             }],
-            meta: {
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         },
         {
-            name:    'fixture1test3',
-            skip:    false,
-            fixture: fixtureMocks[0],
-            meta:    {
+            id:            'idf1t3',
+            name:          'fixture1test3',
+            pageUrl:       'urlf1t3',
+            skip:          false,
+            fixture:       fixtureMocks[0],
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         },
         {
-            name:    'fixture2test1',
-            skip:    false,
-            fixture: fixtureMocks[1],
-            meta:    {
+            id:            'idf2t1',
+            name:          'fixture2test1',
+            pageUrl:       'urlf2t1',
+            skip:          false,
+            fixture:       fixtureMocks[1],
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         },
         {
-            name:    'fixture2test2',
-            skip:    false,
-            fixture: fixtureMocks[1],
-            meta:    {
+            id:            'idf2t2',
+            name:          'fixture2test2',
+            pageUrl:       'urlf2t2',
+            skip:          false,
+            fixture:       fixtureMocks[1],
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         },
         {
-            name:    'fixture3test1',
-            skip:    false,
-            fixture: fixtureMocks[2],
-            meta:    {
+            id:            'idf3t1',
+            name:          'fixture3test1',
+            pageUrl:       'urlf3t1',
+            skip:          false,
+            fixture:       fixtureMocks[2],
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         },
         {
-            name:    'fixture3test2',
-            skip:    true,
-            fixture: fixtureMocks[2],
-            meta:    {
+            id:            'idf3t2',
+            name:          'fixture3test2',
+            pageUrl:       'urlf3t2',
+            skip:          true,
+            fixture:       fixtureMocks[2],
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         },
         {
-            name:    'fixture3test3',
-            skip:    false,
-            fixture: fixtureMocks[2],
-            meta:    {
+            id:            'idf3t3',
+            name:          'fixture3test3',
+            pageUrl:       'urlf3t3',
+            skip:          false,
+            fixture:       fixtureMocks[2],
+            clientScripts: [],
+            meta:          {
                 run: 'run-001'
             }
         }
@@ -126,6 +176,7 @@ describe('Reporter', () => {
     const chromeTestRunMocks = [
         //fixture1test1
         {
+            id:                'f1t1',
             test:              testMocks[0],
             unstable:          true,
             browserConnection: browserConnectionMocks[0],
@@ -138,6 +189,7 @@ describe('Reporter', () => {
 
         //fixture1test2
         {
+            id:                'f1t2',
             test:              testMocks[1],
             unstable:          false,
             browserConnection: browserConnectionMocks[0],
@@ -151,54 +203,60 @@ describe('Reporter', () => {
 
         //fixture1test3
         {
+            id:                'f1t3',
             test:              testMocks[2],
             unstable:          false,
             browserConnection: browserConnectionMocks[0],
             errs:              [],
-            warningLog:        { messages: [] },
+            warningLog:        { messages: [] }
         },
 
         //fixture2test1
         {
+            id:                'f2t1',
             test:              testMocks[3],
             unstable:          false,
             browserConnection: browserConnectionMocks[0],
             errs:              [],
-            warningLog:        { messages: [] },
+            warningLog:        { messages: [] }
         },
 
         //fixture2test2
         {
+            id:                'f2t2',
             test:              testMocks[4],
             unstable:          false,
             browserConnection: browserConnectionMocks[0],
             errs:              [],
-            warningLog:        { messages: [] },
+            warningLog:        { messages: [] }
         },
 
         //fixture3test1
         {
+            id:                'f3t1',
             test:              testMocks[5],
             unstable:          false,
             browserConnection: browserConnectionMocks[0],
             errs:              [],
-            warningLog:        { messages: [] },
+            warningLog:        { messages: [] }
         },
 
         //fixture3test2
         {
+            id:                'f3t2',
             test:              testMocks[6],
             unstable:          true,
-            browserConnection: browserConnectionMocks[1],
+            browserConnection: browserConnectionMocks[0],
             errs:              [],
-            warningLog:        { messages: [] },
+            warningLog:        { messages: [] }
         },
 
         //fixture3test3
         {
+            id:                'f3t3',
             test:              testMocks[7],
             unstable:          true,
-            browserConnection: browserConnectionMocks[1],
+            browserConnection: browserConnectionMocks[0],
             errs:              [],
             warningLog:        { messages: ['warning2'] }
         }
@@ -207,6 +265,7 @@ describe('Reporter', () => {
     const firefoxTestRunMocks = [
         //fixture1test1
         {
+            id:                'f1t1ff',
             test:              testMocks[0],
             unstable:          true,
             browserConnection: browserConnectionMocks[1],
@@ -219,6 +278,7 @@ describe('Reporter', () => {
 
         // 'fixture1test2
         {
+            id:                'f1t2ff',
             test:              testMocks[1],
             unstable:          false,
             browserConnection: browserConnectionMocks[1],
@@ -228,6 +288,7 @@ describe('Reporter', () => {
 
         //fixture1test3
         {
+            id:                'f1t3ff',
             test:              testMocks[2],
             unstable:          false,
             browserConnection: browserConnectionMocks[1],
@@ -237,6 +298,7 @@ describe('Reporter', () => {
 
         //fixture2test1
         {
+            id:                'f2t1ff',
             test:              testMocks[3],
             unstable:          false,
             browserConnection: browserConnectionMocks[1],
@@ -246,6 +308,7 @@ describe('Reporter', () => {
 
         //fixture2test2
         {
+            id:                'f2t2ff',
             test:              testMocks[4],
             unstable:          false,
             browserConnection: browserConnectionMocks[1],
@@ -255,6 +318,7 @@ describe('Reporter', () => {
 
         //fixture3test1
         {
+            id:                'f3t1ff',
             test:              testMocks[5],
             unstable:          true,
             browserConnection: browserConnectionMocks[1],
@@ -264,6 +328,7 @@ describe('Reporter', () => {
 
         //fixture3test2
         {
+            id:                'f3t2ff',
             test:              testMocks[6],
             unstable:          true,
             browserConnection: browserConnectionMocks[1],
@@ -273,6 +338,7 @@ describe('Reporter', () => {
 
         //fixture3test3
         {
+            id:                'f3t3ff',
             test:              testMocks[7],
             unstable:          true,
             browserConnection: browserConnectionMocks[1],
@@ -303,14 +369,55 @@ describe('Reporter', () => {
         }
     }
 
-    class TaskMock extends AsyncEventEmitter {
-        constructor () {
-            super();
+    class VideosMock extends Videos {
+        constructor (testVideoInfos) {
+            super([], { videoPath: '' });
 
-            this.tests                   = testMocks;
-            this.opts                    = { stopOnFirstFail: false };
-            this.browserConnectionGroups = chunk(browserConnectionMocks, 1);
-            this.screenshots             = new ScreenshotsMock();
+
+            this.testVideoInfos = testVideoInfos;
+        }
+    }
+
+    const taskOptions = {
+        disableMultipleWindows: false,
+        appInitDelay:           1000,
+        assertionTimeout:       3000,
+        browsers:               ['chrome', 'firefox'],
+        concurrency:            1,
+        debugMode:              false,
+        debugOnFail:            false,
+        developmentMode:        false,
+        disablePageCaching:     false,
+        disablePageReloads:     false,
+        disableScreenshots:     false,
+        hostname:               'localhost',
+        pageLoadTimeout:        3000,
+        port1:                  1337,
+        port2:                  1338,
+        quarantineMode:         false,
+        reporter:               [{ name: 'customReporter' }],
+        retryTestPages:         false,
+        screenshots:            { path: '/path/to/screenshots' },
+        selectorTimeout:        10000,
+        skipJsErrors:           false,
+        skipUncaughtErrors:     false,
+        speed:                  1,
+        src:                    ['test.js'],
+        stopOnFirstFail:        false,
+        takeScreenshotsOnFails: false
+    };
+
+    class TaskMock extends Task {
+        constructor () {
+            super({
+                tests:                   testMocks,
+                browserConnectionGroups: chunk(browserConnectionMocks, 1),
+                proxy:                   {},
+                opts:                    taskOptions,
+                runnerWarningLog:        new WarningLog()
+            });
+
+            this.screenshots = new ScreenshotsMock();
 
             this.warningLog = {
                 messages: [
@@ -319,6 +426,10 @@ describe('Reporter', () => {
                     'warning3'
                 ]
             };
+        }
+
+        _createBrowserJobs () {
+            return [];
         }
     }
 
@@ -341,52 +452,6 @@ describe('Reporter', () => {
         }, randomDelay());
     }
 
-    function createReporter (taskMock) {
-        return new Reporter({
-            reportTaskStart: function (...args) {
-                expect(args[0]).to.be.a('date');
-
-                // NOTE: replace startTime
-                args[0] = new Date('Thu Jan 01 1970 00:00:00 UTC');
-
-                return delay(1000)
-                    .then(() => log.push({ method: 'reportTaskStart', args: args }));
-            },
-
-            reportFixtureStart: function () {
-                return delay(1000)
-                    .then(() => log.push({ method: 'reportFixtureStart', args: Array.prototype.slice.call(arguments) }));
-            },
-
-            reportTestStart: function (...args) {
-                expect(args[0]).to.be.an('string');
-
-                return delay(1000)
-                    .then(() => log.push({ method: 'reportTestStart', args: args }));
-            },
-
-            reportTestDone: function (...args) {
-                expect(args[1].durationMs).to.be.an('number');
-
-                // NOTE: replace durationMs
-                args[1].durationMs = 74000;
-
-                return delay(1000)
-                    .then(() => log.push({ method: 'reportTestDone', args: args }));
-            },
-
-            reportTaskDone: function (...args) {
-                expect(args[0]).to.be.a('date');
-
-                // NOTE: replace endTime
-                args[0] = new Date('Thu Jan 01 1970 00:15:25 UTC');
-
-                return delay(1000)
-                    .then(() => log.push({ method: 'reportTaskDone', args: args }));
-            }
-        }, taskMock);
-    }
-
     beforeEach(() => {
         log = [];
     });
@@ -395,6 +460,55 @@ describe('Reporter', () => {
         this.timeout(30000);
 
         const taskMock = new TaskMock();
+
+        function createReporter () {
+            return new Reporter({
+                reportTaskStart: function (...args) {
+                    expect(args[0]).to.be.a('date');
+
+                    // NOTE: replace startTime
+                    args[0] = new Date('Thu Jan 01 1970 00:00:00 UTC');
+
+                    return delay(1000)
+                        .then(() => log.push({ method: 'reportTaskStart', args: args }));
+                },
+
+                reportFixtureStart: function () {
+                    return delay(1000)
+                        .then(() => log.push({ method: 'reportFixtureStart', args: Array.prototype.slice.call(arguments) }));
+                },
+
+                reportTestStart: function (...args) {
+                    expect(args[0]).to.be.an('string');
+
+                    args[2].testRunIds = args[2].testRunIds.sort();
+
+                    return delay(1000)
+                        .then(() => log.push({ method: 'reportTestStart', args: args }));
+                },
+
+                reportTestDone: function (...args) {
+                    expect(args[1].durationMs).to.be.an('number');
+
+                    // NOTE: replace durationMs
+                    args[1].durationMs = 74000;
+                    args[1].browsers = sortBy(args[1].browsers, ['alias']);
+
+                    return delay(1000)
+                        .then(() => log.push({ method: 'reportTestDone', args: args }));
+                },
+
+                reportTaskDone: function (...args) {
+                    expect(args[0]).to.be.a('date');
+
+                    // NOTE: replace endTime
+                    args[0] = new Date('Thu Jan 01 1970 00:15:25 UTC');
+
+                    return delay(1000)
+                        .then(() => log.push({ method: 'reportTaskDone', args: args }));
+                }
+            }, taskMock);
+        }
 
         const expectedLog = [
             {
@@ -405,7 +519,104 @@ describe('Reporter', () => {
                         'Chrome',
                         'Firefox'
                     ],
-                    7
+                    7,
+                    [
+                        {
+                            fixture: {
+                                id:    'fid1',
+                                name:  'fixture1',
+                                tests: [
+                                    {
+                                        id:   'idf1t1',
+                                        name: 'fixture1test1',
+                                        skip: false
+                                    },
+                                    {
+                                        id:   'idf1t2',
+                                        name: 'fixture1test2',
+                                        skip: false,
+                                    },
+                                    {
+                                        id:   'idf1t3',
+                                        name: 'fixture1test3',
+                                        skip: false
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            fixture: {
+                                id:    'fid2',
+                                name:  'fixture2',
+                                tests: [
+                                    {
+                                        id:   'idf2t1',
+                                        name: 'fixture2test1',
+                                        skip: false
+                                    },
+                                    {
+                                        id:   'idf2t2',
+                                        name: 'fixture2test2',
+                                        skip: false
+                                    }
+                                ]
+                            },
+                        },
+                        {
+                            fixture: {
+                                id:    'fid3',
+                                name:  'fixture3',
+                                tests: [
+                                    {
+                                        id:   'idf3t1',
+                                        name: 'fixture3test1',
+                                        skip: false
+                                    },
+                                    {
+                                        id:   'idf3t2',
+                                        name: 'fixture3test2',
+                                        skip: true
+                                    },
+                                    {
+                                        id:   'idf3t3',
+                                        name: 'fixture3test3',
+                                        skip: false
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    // NOTE: task properties
+                    {
+                        configuration: {
+                            disableMultipleWindows: false,
+                            appInitDelay:           1000,
+                            assertionTimeout:       3000,
+                            browsers:               ['chrome', 'firefox'],
+                            concurrency:            1,
+                            debugMode:              false,
+                            debugOnFail:            false,
+                            developmentMode:        false,
+                            disablePageCaching:     false,
+                            disablePageReloads:     false,
+                            disableScreenshots:     false,
+                            hostname:               'localhost',
+                            pageLoadTimeout:        3000,
+                            port1:                  1337,
+                            port2:                  1338,
+                            quarantineMode:         false,
+                            reporter:               [{ name: 'customReporter' }],
+                            retryTestPages:         false,
+                            screenshots:            { path: '/path/to/screenshots' },
+                            selectorTimeout:        10000,
+                            skipJsErrors:           false,
+                            skipUncaughtErrors:     false,
+                            speed:                  1,
+                            src:                    ['test.js'],
+                            stopOnFirstFail:        false,
+                            takeScreenshotsOnFails: false
+                        }
+                    }
                 ]
             },
             {
@@ -425,6 +636,13 @@ describe('Reporter', () => {
                     'fixture1test1',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf1t1',
+                        testRunIds: [
+                            'f1t1',
+                            'f1t1ff'
+                        ]
                     }
                 ]
             },
@@ -446,12 +664,29 @@ describe('Reporter', () => {
                         },
                         screenshotPath: '/screenshots/1445437598847',
                         screenshots:    [{
+                            testRunId:         'idf1t1-1',
                             screenshotPath:    'screenshot1.png',
                             thumbnailPath:     'thumbnail1.png',
                             userAgent:         'chrome',
                             takenOnFail:       false,
                             quarantineAttempt: 2
-                        }]
+                        }],
+                        videos:   [],
+                        testId:   'idf1t1',
+                        browsers: [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f1t1'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f1t1ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -466,6 +701,13 @@ describe('Reporter', () => {
                     'fixture1test2',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf1t2',
+                        testRunIds: [
+                            'f1t2',
+                            'f1t2ff'
+                        ]
                     }
                 ]
             },
@@ -498,18 +740,36 @@ describe('Reporter', () => {
                         quarantine:     null,
                         screenshotPath: '/screenshots/1445437598847',
                         screenshots:    [{
+                            testRunId:         'idf1t2-1',
                             screenshotPath:    'screenshot1.png',
                             thumbnailPath:     'thumbnail1.png',
                             userAgent:         'chrome',
                             takenOnFail:       false,
                             quarantineAttempt: null
                         }, {
+                            testRunId:         'idf1t2-2',
                             screenshotPath:    'screenshot2.png',
                             thumbnailPath:     'thumbnail2.png',
                             userAgent:         'chrome',
                             takenOnFail:       true,
                             quarantineAttempt: null
-                        }]
+                        }],
+                        videos:   [],
+                        testId:   'idf1t2',
+                        browsers: [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f1t2'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f1t2ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -524,6 +784,13 @@ describe('Reporter', () => {
                     'fixture1test3',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf1t3',
+                        testRunIds: [
+                            'f1t3',
+                            'f1t3ff'
+                        ]
                     }
                 ]
             },
@@ -541,7 +808,23 @@ describe('Reporter', () => {
                         skipped:        false,
                         quarantine:     null,
                         screenshotPath: null,
-                        screenshots:    []
+                        screenshots:    [],
+                        videos:         [],
+                        testId:         'idf1t3',
+                        browsers:       [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f1t3'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f1t3ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -566,6 +849,13 @@ describe('Reporter', () => {
                     'fixture2test1',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf2t1',
+                        testRunIds: [
+                            'f2t1',
+                            'f2t1ff'
+                        ]
                     }
                 ]
             },
@@ -583,7 +873,23 @@ describe('Reporter', () => {
                         skipped:        false,
                         quarantine:     null,
                         screenshotPath: null,
-                        screenshots:    []
+                        screenshots:    [],
+                        videos:         [],
+                        testId:         'idf2t1',
+                        browsers:       [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f2t1'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f2t1ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -598,6 +904,13 @@ describe('Reporter', () => {
                     'fixture2test2',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf2t2',
+                        testRunIds: [
+                            'f2t2',
+                            'f2t2ff'
+                        ]
                     }
                 ]
             },
@@ -615,7 +928,23 @@ describe('Reporter', () => {
                         skipped:        false,
                         quarantine:     null,
                         screenshotPath: null,
-                        screenshots:    []
+                        screenshots:    [],
+                        videos:         [],
+                        testId:         'idf2t2',
+                        browsers:       [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f2t2'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f2t2ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -638,6 +967,13 @@ describe('Reporter', () => {
                     'fixture3test1',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf3t1',
+                        testRunIds: [
+                            'f3t1',
+                            'f3t1ff'
+                        ]
                     }
                 ]
             },
@@ -661,7 +997,23 @@ describe('Reporter', () => {
                         skipped:        false,
                         quarantine:     null,
                         screenshotPath: null,
-                        screenshots:    []
+                        screenshots:    [],
+                        videos:         [],
+                        testId:         'idf3t1',
+                        browsers:       [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f3t1'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f3t1ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -676,6 +1028,13 @@ describe('Reporter', () => {
                     'fixture3test2',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf3t2',
+                        testRunIds: [
+                            'f3t2',
+                            'f3t2ff'
+                        ]
                     }
                 ]
             },
@@ -693,7 +1052,23 @@ describe('Reporter', () => {
                         skipped:        true,
                         quarantine:     null,
                         screenshotPath: null,
-                        screenshots:    []
+                        screenshots:    [],
+                        videos:         [],
+                        testId:         'idf3t2',
+                        browsers:       [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f3t2'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f3t2ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -708,6 +1083,13 @@ describe('Reporter', () => {
                     'fixture3test3',
                     {
                         run: 'run-001'
+                    },
+                    {
+                        testId:     'idf3t3',
+                        testRunIds: [
+                            'f3t3',
+                            'f3t3ff'
+                        ]
                     }
                 ]
             },
@@ -725,7 +1107,23 @@ describe('Reporter', () => {
                         skipped:        false,
                         quarantine:     null,
                         screenshotPath: null,
-                        screenshots:    []
+                        screenshots:    [],
+                        videos:         [],
+                        testId:         'idf3t3',
+                        browsers:       [
+                            {
+                                alias:     'Chrome',
+                                userAgent: 'Chrome',
+                                headless:  false,
+                                testRunId: 'f3t3'
+                            },
+                            {
+                                alias:     'Firefox',
+                                userAgent: 'Firefox',
+                                headless:  false,
+                                testRunId: 'f3t3ff'
+                            }
+                        ]
                     },
                     {
                         run: 'run-001'
@@ -770,5 +1168,93 @@ describe('Reporter', () => {
         const reporter = new Reporter({ noColors: true }, taskMock);
 
         expect(reporter.plugin.chalk.enabled).to.be.false;
+    });
+
+    it('Should provide videos info to the reporter', function () {
+        this.timeout(3000);
+
+        const videoLog = [];
+        const taskMock = new TaskMock();
+
+        taskMock.videos = new VideosMock({
+            'idf1t1': {
+                recordings: [{
+                    testRunId: 'f1t1-id1',
+                    videoPath: 'f1t1-path1'
+                }, {
+                    testRunId: 'f1t1-id2',
+                    videoPath: 'f1t1-path2'
+                }]
+            },
+            'idf1t2': {
+                recordings: [{
+                    testRunId: 'f1t2-id1',
+                    videoPath: 'f1t2-path1'
+                }, {
+                    testRunId: 'f1t2-id2',
+                    videoPath: 'f1t2-path2'
+                }]
+            }
+        });
+
+        function createReporter () {
+            return new Reporter({
+                reportTaskStart:    noop,
+                reportTaskDone:     noop,
+                reportFixtureStart: noop,
+                reportTestStart:    noop,
+                reportTestDone:     (name, testRunInfo) => {
+                    videoLog.push(testRunInfo.videos);
+                }
+            }, taskMock);
+        }
+
+        createReporter();
+
+        return Promise.all([
+            emulateBrowserJob(taskMock, chromeTestRunMocks.slice(0, 2)),
+            emulateBrowserJob(taskMock, firefoxTestRunMocks.slice(0, 2))
+        ])
+            .then(() => {
+                expect(videoLog).eql([
+                    [
+                        { testRunId: 'f1t1-id1', videoPath: 'f1t1-path1' },
+                        { testRunId: 'f1t1-id2', videoPath: 'f1t1-path2' }
+                    ],
+                    [
+                        { testRunId: 'f1t2-id1', videoPath: 'f1t2-path1' },
+                        { testRunId: 'f1t2-id2', videoPath: 'f1t2-path2' }
+                    ]]
+                );
+            });
+    });
+
+    it('Should dispatch uncaught exception from any plugin method to Task `error` event', async () => {
+        function createBrokenReporter (task) {
+            const reporterObject = {};
+
+            for (const method of Object.values(ReporterPluginMethod)) {
+                reporterObject[method] = () => {
+                    throw new Error(`oops`);
+                };
+            }
+
+            return new Reporter(reporterObject, task, null, 'customReporter');
+        }
+
+        const taskMock = new TaskMock();
+
+        taskMock.on('error', e => log.push(e));
+
+        const reporter = createBrokenReporter(taskMock);
+
+        for (const method of Object.values(ReporterPluginMethod)) {
+            await reporter.dispatchToPlugin({ method });
+
+            const lastErr = log.pop();
+
+            expect(lastErr).instanceOf(ReporterPluginError);
+            expect(lastErr.message).startsWith(`An uncaught error occurred in the "customReporter" reporter's "${method}" method. Error details:\nError: oops`);
+        }
     });
 });

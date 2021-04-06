@@ -1,55 +1,45 @@
 import hammerhead from 'testcafe-hammerhead';
-import asyncToGenerator from 'babel-runtime/helpers/asyncToGenerator';
+import asyncToGenerator from '@babel/runtime/helpers/asyncToGenerator';
 import { noop } from 'lodash';
 // import loadBabelLibs from './load-babel-libs';
 import { ClientFunctionAPIError } from '../errors/runtime';
 import { RUNTIME_ERRORS } from '../errors/types';
+import formatBabelProducedCode from './babel/format-babel-produced-code';
+// import BASE_BABEL_OPTIONS from './babel/get-base-babel-options';
 
 const ANONYMOUS_FN_RE                = /^function\s*\*?\s*\(/;
 const ES6_OBJ_METHOD_NAME_RE         = /^(\S+?)\s*\(/;
 const USE_STRICT_RE                  = /^('|")use strict('|");?/;
 const TRAILING_SEMICOLON_RE          = /;\s*$/;
-const REGENERATOR_FOOTPRINTS_RE      = /asyncGeneratorStep|(_index\d+\.default|_regenerator\d+\.default|regeneratorRuntime)\.wrap\(function _callee\$\(_context\)/;
-const ASYNC_TO_GENERATOR_OUTPUT_CODE = asyncToGenerator(noop).toString();
+const REGENERATOR_FOOTPRINTS_RE      = /(_index\d+\.default|_regenerator\d+\.default|regeneratorRuntime)\.wrap\(function func\$\(_context\)/;
+const ASYNC_TO_GENERATOR_OUTPUT_CODE = formatBabelProducedCode(asyncToGenerator(noop).toString());
 
-const babelArtifactPolyfills = {
-    'Promise': {
-        re:                 /_promise(\d+)\.default/,
-        getCode:            match => `var _promise${match[1]} = { default: Promise };`,
-        removeMatchingCode: false
-    },
+const CLIENT_FUNCTION_BODY_WRAPPER = code => `const func = (${code});`;
+const CLIENT_FUNCTION_WRAPPER      = ({ code, dependencies }) => `(function(){${dependencies} ${code} return func;})();`;
 
-    'Object.keys()': {
-        re:                 /_keys(\d+)\.default/,
-        getCode:            match => `var _keys${match[1]} = { default: Object.keys };`,
-        removeMatchingCode: false
-    },
+// function getBabelOptions () {
+//     const { presetFallback, transformForOfAsArray } = loadBabelLibs();
 
-    'JSON.stringify()': {
-        re:                 /_stringify(\d+)\.default/,
-        getCode:            match => `var _stringify${match[1]} = { default: JSON.stringify };`,
-        removeMatchingCode: false
-    }
-};
+//     return {
+//         presets:       [{ plugins: [transformForOfAsArray] }, presetFallback],
+//         sourceMaps:    false,
+//         retainLines:   true,
+//         ast:           false,
+//         babelrc:       false,
+//         highlightCode: false
+//     };
+// }
 
+function downgradeES (fnCode) {
+    // const { babel } = loadBabelLibs();
+    const babel = require('@babel/core');
 
-function getBabelOptions () {
-    // const { presetFallback, transformForOfAsArray } = loadBabelLibs();
-
-    // return {
-    //     presets:       [{ plugins: [transformForOfAsArray] }, presetFallback],
-    //     sourceMaps:    false,
-    //     retainLines:   true,
-    //     ast:           false,
-    //     babelrc:       false,
-    //     highlightCode: false
-    // };
-    return {
+    // const opts     = getBabelOptions();
+    const compiled = babel.transform(fnCode, {
         sourceMaps:    false,
         retainLines:   true,
         ast:           false,
         babelrc:       false,
-        configFile:    false,
         highlightCode: false,
         presets:       [
             [
@@ -63,39 +53,11 @@ function getBabelOptions () {
             ],
             '@babel/preset-react',
         ],
-    };
-}
-
-function downgradeES (fnCode) {
-    const babel = require('@babel/core');
-
-    const opts     = getBabelOptions();
-    const compiled = babel.transform(fnCode, opts);
+    });
 
     return compiled.code
         .replace(USE_STRICT_RE, '')
         .trim();
-}
-
-function addBabelArtifactsPolyfills (fnCode, dependenciesDefinition) {
-    let modifiedFnCode = fnCode;
-
-    const polyfills = Object
-        .values(babelArtifactPolyfills)
-        .reduce((polyfillsCode, polyfill) => {
-            const match = fnCode.match(polyfill.re);
-
-            if (match) {
-                if (polyfill.removeMatchingCode)
-                    modifiedFnCode = modifiedFnCode.replace(polyfill.re, '');
-
-                return polyfillsCode + polyfill.getCode(match);
-            }
-
-            return polyfillsCode;
-        }, '');
-
-    return `(function(){${dependenciesDefinition}${polyfills} return ${modifiedFnCode}})();`;
 }
 
 function getDependenciesDefinition (dependencies) {
@@ -120,18 +82,26 @@ function makeFnCodeSuitableForParsing (fnCode) {
     return fnCode;
 }
 
+function containsAsyncToGeneratorOutputCode (code) {
+    const formattedCode = formatBabelProducedCode(code);
+
+    return formattedCode.includes(ASYNC_TO_GENERATOR_OUTPUT_CODE);
+}
+
 export default function compileClientFunction (fnCode, dependencies, instantiationCallsiteName, compilationCallsiteName) {
-    if (fnCode === ASYNC_TO_GENERATOR_OUTPUT_CODE)
+    if (containsAsyncToGeneratorOutputCode(fnCode))
         throw new ClientFunctionAPIError(compilationCallsiteName, instantiationCallsiteName, RUNTIME_ERRORS.regeneratorInClientFunctionCode);
 
     fnCode = makeFnCodeSuitableForParsing(fnCode);
+
+
+    fnCode = CLIENT_FUNCTION_BODY_WRAPPER(fnCode);
 
     // NOTE: we need to recompile ES6 code for the browser if we are on newer versions of Node.
     fnCode = downgradeES(fnCode);
     fnCode = hammerhead.processScript(fnCode, false);
 
-    // NOTE: check compiled code for regenerator injection: we have either generator
-    // recompiled in Node.js 4+ for client or async function declared in function code.
+    // NOTE: check compiled code for regenerator injection
     if (REGENERATOR_FOOTPRINTS_RE.test(fnCode))
         throw new ClientFunctionAPIError(compilationCallsiteName, instantiationCallsiteName, RUNTIME_ERRORS.regeneratorInClientFunctionCode);
 
@@ -140,5 +110,5 @@ export default function compileClientFunction (fnCode, dependencies, instantiati
 
     const dependenciesDefinition = dependencies ? getDependenciesDefinition(dependencies) : '';
 
-    return addBabelArtifactsPolyfills(fnCode, dependenciesDefinition);
+    return CLIENT_FUNCTION_WRAPPER({ code: fnCode, dependencies: dependenciesDefinition });
 }

@@ -4,7 +4,11 @@ import scrollController from './scroll-controller';
 
 import { get, hasDimensions } from './utils/style';
 import { filter } from './utils/array';
-import { isShadowUIElement, isWindow, getParents } from './utils/dom';
+import {
+    isShadowUIElement,
+    isWindow,
+    getParents
+} from './utils/dom';
 
 const browserUtils   = utils.browser;
 const listeners      = eventSandbox.listeners;
@@ -75,11 +79,11 @@ function preventRealEventHandler (e, dispatched, preventDefault, cancelHandlers,
 
 export function preventRealEvents () {
     listeners.initElementListening(window, PREVENTED_EVENTS);
-    listeners.addFirstInternalHandler(window, PREVENTED_EVENTS, preventRealEventHandler);
+    listeners.addFirstInternalEventBeforeListener(window, PREVENTED_EVENTS, preventRealEventHandler);
 
     scrollController.init();
 }
 
 export function disableRealEventsPreventing () {
-    listeners.removeInternalEventListener(window, PREVENTED_EVENTS, preventRealEventHandler);
+    listeners.removeInternalEventBeforeListener(window, PREVENTED_EVENTS, preventRealEventHandler);
 }

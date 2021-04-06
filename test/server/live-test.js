@@ -1,12 +1,11 @@
-const expect               = require('chai').expect;
-const noop                 = require('lodash').noop;
-const path                 = require('path');
-const createTestCafe       = require('../../lib/index');
-const FileWatcher          = require('../../lib/live/file-watcher');
-const LiveModeController   = require('../../lib/live/controller');
-const LiveModeRunner       = require('../../lib/live/test-runner');
-const LiveModeBootstrapper = require('../../lib/live/bootstrapper');
-
+const { expect }                    = require('chai');
+const { noop }                      = require('lodash');
+const path                          = require('path');
+const createTestCafe                = require('../../lib/index');
+const FileWatcher                   = require('../../lib/live/file-watcher');
+const LiveModeController            = require('../../lib/live/controller');
+const LiveModeRunner                = require('../../lib/live/test-runner');
+const LiveModeBootstrapper          = require('../../lib/live/bootstrapper');
 const LiveModeKeyboardEventObserver = require('../../lib/live/keyboard-observer');
 
 const testFileWithSingleTestPath               = path.resolve('test/server/data/test-suites/live/test.js');
@@ -15,13 +14,20 @@ const testFileWithSyntaxErrorPath              = path.resolve('test/server/data/
 const testFileWithExternalModulePath           = path.resolve('test/server/data/test-suites/live/test-external-module.js');
 const testFileWithExternalModuleRerunPath      = path.resolve('test/server/data/test-suites/live/test-external-module-rerun.js');
 const testFileWithExternalUnexistingModulePath = path.resolve('test/server/data/test-suites/live/test-external-unexisting-module.js');
+const testFileWithSkippedTestPath              = path.resolve('test/server/data/test-suites/live/test-with-skipped.js');
 
 const externalModulePath         = path.resolve('test/server/data/test-suites/live/module.js');
 const externalCommonJsModulePath = path.resolve('test/server/data/test-suites/live/commonjs-module.js');
 
+const DOCKER_TESTCAFE_FOLDER_REGEXP = /^\/usr\/lib\/node_modules\/testcafe/;
+
+const browserSetMock = {
+    browserConnectionGroups: []
+};
+
 class FileWatcherMock extends FileWatcher {
     addFile (controller, file) {
-        if (file.replace(/^\/usr\/lib\/node_modules\/testcafe/, '').indexOf('node_modules') > -1)
+        if (!FileWatcher.shouldWatchFile(file.replace(DOCKER_TESTCAFE_FOLDER_REGEXP, '')))
             return;
 
         this.files = this.files || [];
@@ -73,7 +79,7 @@ class BootstrapperMock extends LiveModeBootstrapper {
         return Promise.resolve({
             reporterPlugins:     [],
             tests:               [],
-            browserSet:          {},
+            browserSet:          browserSetMock,
             testedApp:           {},
             commonClientScripts: []
         });
@@ -82,7 +88,11 @@ class BootstrapperMock extends LiveModeBootstrapper {
 
 class RunnerMock extends LiveModeRunner {
     constructor ({ proxy, browserConnectionGateway, configuration }, { runTimeout = 0, errorOnValidate = false, onBootstrapDone = noop }) {
-        super(proxy, browserConnectionGateway, configuration.clone());
+        super({
+            proxy,
+            browserConnectionGateway,
+            configuration: configuration.clone()
+        });
 
         this.runCount        = 0;
         this.runTimeout      = runTimeout;
@@ -138,6 +148,9 @@ class RunnerMock extends LiveModeRunner {
                 this.emit('tests-completed');
 
                 this.stopInfiniteWaiting();
+            })
+            .catch(error => {
+                this.emit('error-occurred', error);
             });
     }
 
@@ -343,6 +356,8 @@ describe('TestCafe Live', function () {
     });
 
     it('same runner runs twice', function () {
+        this.timeout(6000);
+
         runner = new RunnerMock(testCafe, {})
             .browsers('chrome');
 
@@ -362,6 +377,24 @@ describe('TestCafe Live', function () {
         return runTests(testFileWithSingleTestPath, { errorOnValidate: true })
             .catch(err => {
                 expect(err.message.indexOf('validationError') > -1).to.be.true;
+            });
+    });
+
+    it('"test files not found" error', function (done) {
+        runner = new RunnerMock(testCafe, {});
+
+        runner.once('error-occurred', error => {
+            expect(error.message).contain('TestCafe could not find the test files that match the following patterns');
+
+            done();
+        });
+
+        runner
+            .src('dummy.js')
+            .browsers('chrome')
+            .run()
+            .then(() => {
+                throw new Error('Should raise the "Test files not found" error');
             });
     });
 
@@ -386,6 +419,13 @@ describe('TestCafe Live', function () {
             })
             .then(() => {
                 expect(counter).eql(2);
+            });
+    });
+
+    it('skipped tests', async () => {
+        return runTests(testFileWithSkippedTestPath)
+            .then(() => {
+                expect(runner.testRunController.expectedTestCount).eql(2);
             });
     });
 

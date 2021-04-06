@@ -67,10 +67,24 @@ async function runTests (argParser) {
     const port2             = opts.ports && opts.ports[1];
     const proxy             = opts.proxy;
     const proxyBypass       = opts.proxyBypass;
+    const configFile        = opts.configFile;
 
     log.showSpinner();
 
-    const testCafe = await createTestCafe(opts.hostname, port1, port2, opts.ssl, opts.dev);
+    const { hostname, ssl, dev, experimentalCompilerService, retryTestPages, cache } = opts;
+
+    const testCafe = await createTestCafe({
+        developmentMode: dev,
+
+        hostname,
+        port1,
+        port2,
+        ssl,
+        experimentalCompilerService,
+        retryTestPages,
+        cache,
+        configFile
+    });
 
     const correctedBrowsersAndSources = await correctBrowsersAndSources(argParser, testCafe.configuration);
     const automatedBrowsers           = correctedBrowsersAndSources.browsers;
@@ -95,7 +109,8 @@ async function runTests (argParser) {
         .video(opts.video, opts.videoOptions, opts.videoEncodingOptions)
         .screenshots(opts.screenshots)
         .startApp(opts.app, opts.appInitDelay)
-        .clientScripts(argParser.opts.clientScripts);
+        .clientScripts(argParser.opts.clientScripts)
+        .compilerOptions(argParser.opts.compilerOptions);
 
     runner.once('done-bootstrapping', () => log.hideSpinner());
 

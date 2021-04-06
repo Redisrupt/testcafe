@@ -82,12 +82,16 @@ interface RequestData {
     /**
      * Request headers in the property-value form. Logged if the `logRequestHeaders` option is set to `true`.
      */
-    headers: object;
+    headers: Record<string, string>;
     /**
      * The response body. Logged if the `logResponseBody` option is set to `true`.
      * A [Buffer](https://nodejs.org/api/buffer.html) or string depending on the `stringifyResponseBody` option.
      */
-    body: string | any;
+    body: string | Buffer;
+    /**
+     * The timestamp that specifies when the request was intercepted.
+     */
+    timestamp: number;
 }
 
 interface ResponseData {
@@ -98,13 +102,17 @@ interface ResponseData {
     /**
      * Response headers in the property-value form. Logged if the `logResponseHeaders` option is set to true.
      */
-    headers: object;
+    headers: Record<string, string>;
     /**
      * The response body.
      * Logged if the `logResponseBody` option is set to true.
-     * A Buffer or string depending on the `stringifyResponseBody` option.
+     * A [Buffer](https://nodejs.org/api/buffer.html) or string depending on the `stringifyResponseBody` option.
      */
-    body: string | any;
+    body: string | Buffer;
+    /**
+     * The timestamp that specifies when the response was intercepted.
+     */
+    timestamp: number;
 }
 
 interface RequestLogger extends RequestHook {
@@ -143,16 +151,66 @@ interface RequestMock {
      * Specifies requests to intercept
      * @param filter - Specifies which requests should be mocked with a response that follows in the `respond` method.
      */
-    onRequestTo(filter: string | RegExp | object | ((req: any) => boolean)): RequestMock;
+    onRequestTo(filter: string | RegExp | object | ((req: RequestOptions) => boolean)): RequestMock;
     /**
      * Specifies the mocked response.
      * @param body - The mocked response body.
      * @param statusCode - The response status code.
      * @param headers - Custom headers added to the response in the property-value form.
      */
-    respond(body?: object | string | ((req: any, res: any) => any), statusCode?: number, headers?: object): RequestMock;
+    respond(body?: object | string | ((req: RequestOptions, res: ResponseMock) => any), statusCode?: number, headers?: Record<string, string>): RequestMock;
 }
 
 interface RequestMockFactory {
     (): RequestMock;
+}
+
+/**
+ * {@link https://devexpress.github.io/testcafe/documentation/reference/test-api/requestmock/respond.html#requestoptions See documentation}.
+ */
+interface RequestOptions {
+    /** The request headers in the property-value form. */
+    headers: Record<string, string>;
+    /** The request body. */
+    body: Buffer;
+    /** The URL of the resource. */
+    url: string;
+    /** The protocol to use. Default: http:. */
+    protocol: string;
+    /** The alias for the host. */
+    hostname: string;
+    /** The domain name or IP address of the server to issue the request to. Default: localhost. */
+    host: string;
+    /** The port of the remote server. Default: 80. */
+    port: number;
+    /**
+     * The request path. Should include query string if any. E.G. '/index.html?page=12'. An exception
+     * is thrown when the request path contains illegal characters. Currently, only spaces are
+     * rejected but that may change in the future. Default: '/'.
+     */
+    path: string;
+    /** The HTTP request method. Default: 'GET'. */
+    method: string;
+    /**
+     * Credentials that were used for authentication in the current session using NTLM or Basic
+     * authentication. For HTTP Basic authentication, these are `username` and `password`. NTLM
+     * authentication additionally specifies `workstation` and `domain`.
+     * See {@link https://devexpress.github.io/testcafe/documentation/guides/advanced-guides/authentication.html#http-authentication HTTP Authentication}.
+     */
+    credentials: Record<string, string>;
+    /**
+     * If a proxy is used, the property contains information about its `host`, `hostname`, `port`,
+     * `proxyAuth`, `authHeader` and `bypassRules`.
+     */
+    proxy: Record<string, unknown>;
+    /**
+     * Specifies whether the request is an AJAX request (xhr or fetch).
+     */
+    isAjax: Boolean;
+}
+
+interface ResponseMock {
+    headers: Record<string, string>;
+    statusCode: number;
+    setBody(value: string): void;
 }

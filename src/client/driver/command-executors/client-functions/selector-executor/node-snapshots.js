@@ -2,15 +2,17 @@ import { positionUtils, domUtils } from '../../../deps/testcafe-core';
 
 import {
     NODE_SNAPSHOT_PROPERTIES,
-    ELEMENT_SNAPSHOT_PROPERTIES
+    ELEMENT_SNAPSHOT_PROPERTIES,
+    ELEMENT_ACTION_SNAPSHOT_PROPERTIES
 } from '../../../../../client-functions/selectors/snapshot-properties';
 
 
 // Node
 const nodeSnapshotPropertyInitializers = {
-    // eslint-disable-next-line no-restricted-properties
+    /*eslint-disable no-restricted-properties*/
     textContent:    node => node.textContent,
     childNodeCount: node => node.childNodes.length,
+    /*eslint-enable no-restricted-properties*/
     hasChildNodes:  node => !!nodeSnapshotPropertyInitializers.childNodeCount(node),
 
     childElementCount: node => {
@@ -22,13 +24,13 @@ const nodeSnapshotPropertyInitializers = {
 
         // NOTE: IE doesn't have `children` for non-element nodes =/
         let childElementCount = 0;
-        const childNodeCount    = node.childNodes.length;
-        /*eslint-enable no-restricted-properties*/
+        const childNodeCount  = node.childNodes.length;
 
         for (let i = 0; i < childNodeCount; i++) {
             if (node.childNodes[i].nodeType === 1)
                 childElementCount++;
         }
+        /*eslint-enable no-restricted-properties*/
 
         return childElementCount;
     },
@@ -38,11 +40,7 @@ const nodeSnapshotPropertyInitializers = {
     /*eslint-enable no-restricted-properties*/
 };
 
-export class NodeSnapshot {
-    constructor (node) {
-        this._initializeProperties(node, NODE_SNAPSHOT_PROPERTIES, nodeSnapshotPropertyInitializers);
-    }
-
+class BaseSnapshot {
     _initializeProperties (node, properties, initializers) {
         for (let i = 0; i < properties.length; i++) {
             const property    = properties[i];
@@ -50,6 +48,14 @@ export class NodeSnapshot {
 
             this[property] = initializer ? initializer(node) : node[property];
         }
+    }
+}
+
+export class NodeSnapshot extends BaseSnapshot {
+    constructor (node) {
+        super();
+
+        this._initializeProperties(node, NODE_SNAPSHOT_PROPERTIES, nodeSnapshotPropertyInitializers);
     }
 }
 
@@ -111,6 +117,14 @@ const elementSnapshotPropertyInitializers = {
     // eslint-disable-next-line no-restricted-properties
     innerText: element => element.innerText
 };
+
+export class ElementActionSnapshot extends BaseSnapshot {
+    constructor (element) {
+        super(element);
+
+        this._initializeProperties(element, ELEMENT_ACTION_SNAPSHOT_PROPERTIES, elementSnapshotPropertyInitializers);
+    }
+}
 
 export class ElementSnapshot extends NodeSnapshot {
     constructor (element) {

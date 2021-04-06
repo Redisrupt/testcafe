@@ -1,14 +1,13 @@
-const expect           = require('chai').expect;
-const fs               = require('fs');
-const generateReporter = require('./reporter');
+const expect               = require('chai').expect;
+const fs                   = require('fs');
+const generateReporter     = require('./reporter');
+const ReporterPluginMethod = require('../../../../lib/reporter/plugin-methods');
 
 const {
     createSimpleTestStream,
     createAsyncTestStream,
     createSyncTestStream
 } = require('../../utils/stream');
-
-const { ClickOptions, AssertionOptions } = require('../../../../lib/test-run/commands/options');
 
 describe('Reporter', () => {
     const stdoutWrite = process.stdout.write;
@@ -248,7 +247,10 @@ describe('Reporter', () => {
         it('Simple command', function () {
             const log = [];
 
-            return runTests('testcafe-fixtures/index-test.js', 'Simple command test', generateRunOptions(log, { includeBrowserInfo: true, includeTestInfo: true }))
+            return runTests('testcafe-fixtures/index-test.js', 'Simple command test', generateRunOptions(log, {
+                includeBrowserInfo: true,
+                includeTestInfo:    true
+            }))
                 .then(() => {
                     expect(log).eql([
                         {
@@ -256,8 +258,13 @@ describe('Reporter', () => {
                             action:  'start',
                             browser: 'chrome',
                             test:    {
+                                id:    'test-id',
                                 name:  'Simple command test',
                                 phase: 'inTest'
+                            },
+                            fixture: {
+                                id:   'fixture-id',
+                                name: 'Reporter'
                             }
                         },
                         {
@@ -265,12 +272,19 @@ describe('Reporter', () => {
                             action:  'done',
                             command: {
                                 type:     'click',
-                                options:  new ClickOptions(),
-                                selector: 'Selector(\'#target\')'
+                                selector: 'Selector(\'#target\')',
+                                options:  {
+                                    offsetX: 10
+                                }
                             },
                             test: {
+                                id:    'test-id',
                                 name:  'Simple command test',
                                 phase: 'inTest'
+                            },
+                            fixture: {
+                                id:   'fixture-id',
+                                name: 'Reporter'
                             }
                         }
                     ]);
@@ -292,10 +306,9 @@ describe('Reporter', () => {
                             action:  'done',
                             command: {
                                 type:     'click',
-                                options:  new ClickOptions(),
                                 selector: 'Selector(\'#non-existing-target\')'
                             },
-                            errors: ['E24']
+                            err: 'E24'
                         }
                     ]);
                 });
@@ -321,7 +334,9 @@ describe('Reporter', () => {
                                 expected:      true,
                                 expected2:     void 0,
                                 message:       'assertion message',
-                                options:       new AssertionOptions({ timeout: 100 })
+                                options:       {
+                                    timeout: 100
+                                }
                             }
                         },
                     ]);
@@ -347,8 +362,7 @@ describe('Reporter', () => {
                                 assertionType: 'eql',
                                 expected:      'target',
                                 expected2:     void 0,
-                                message:       null,
-                                options:       new AssertionOptions()
+                                message:       null
                             }
                         },
                     ]);
@@ -405,7 +419,7 @@ describe('Reporter', () => {
                                         1,
                                         true
                                     ],
-                                    code: '(function(){ return (function (bool) {return function () {return bool;};});})();'
+                                    code: '(function(){ var func = function func(bool) {return function () {return bool;};}; return func;})();'
                                 },
                                 type: 'execute-client-function'
                             }
@@ -426,9 +440,9 @@ describe('Reporter', () => {
                             action:  'done',
                             command: {
                                 role: {
-                                    loginPage: 'http://localhost:3000/fixtures/reporter/pages/index.html',
-                                    options:   { preserveUrl: true },
-                                    phase:     'initialized'
+                                    loginUrl: 'http://localhost:3000/fixtures/reporter/pages/index.html',
+                                    options:  { preserveUrl: true },
+                                    phase:    'initialized'
                                 },
                                 type: 'useRole'
                             }
@@ -447,29 +461,43 @@ describe('Reporter', () => {
                             name:   'useRole',
                             action: 'start',
                             test:   {
+                                id:    'test-id',
                                 name:  'Complex nested command test',
                                 phase: 'inTest'
+                            },
+                            fixture: {
+                                id:   'fixture-id',
+                                name: 'Reporter'
                             }
                         },
                         {
                             name:   'click',
                             action: 'start',
                             test:   {
+                                id:    'test-id',
                                 name:  'Complex nested command test',
                                 phase: 'inRoleInitializer'
+                            },
+                            fixture: {
+                                id:   'fixture-id',
+                                name: 'Reporter'
                             }
                         },
                         {
                             name:    'click',
                             action:  'done',
                             command: {
-                                options:  new ClickOptions(),
                                 selector: 'Selector(\'#target\')',
                                 type:     'click'
                             },
                             test: {
+                                id:    'test-id',
                                 name:  'Complex nested command test',
                                 phase: 'inRoleInitializer'
+                            },
+                            fixture: {
+                                id:   'fixture-id',
+                                name: 'Reporter'
                             }
                         },
                         {
@@ -477,15 +505,20 @@ describe('Reporter', () => {
                             action:  'done',
                             command: {
                                 role: {
-                                    loginPage: 'http://localhost:3000/fixtures/reporter/pages/index.html',
-                                    options:   {},
-                                    phase:     'initialized'
+                                    loginUrl: 'http://localhost:3000/fixtures/reporter/pages/index.html',
+                                    options:  { 'preserveUrl': false },
+                                    phase:    'initialized'
                                 },
                                 type: 'useRole'
                             },
                             test: {
+                                id:    'test-id',
                                 name:  'Complex nested command test',
                                 phase: 'inTest'
+                            },
+                            fixture: {
+                                id:   'fixture-id',
+                                name: 'Reporter'
                             }
                         }
                     ]);
@@ -504,24 +537,22 @@ describe('Reporter', () => {
                             name:    'click',
                             action:  'done',
                             command: {
-                                options:  new ClickOptions(),
                                 selector: 'Selector(\'#non-existing-element\')',
                                 type:     'click'
                             },
-                            errors: ['E24']
+                            err: 'E24'
                         },
                         {
                             name:    'useRole',
                             action:  'done',
                             command: {
                                 role: {
-                                    loginPage: 'http://localhost:3000/fixtures/reporter/pages/index.html',
-                                    options:   {},
-                                    phase:     'initialized'
+                                    loginUrl: 'http://localhost:3000/fixtures/reporter/pages/index.html',
+                                    options:  { 'preserveUrl': false },
+                                    phase:    'initialized'
                                 },
                                 type: 'useRole'
-                            },
-                            errors: ['E24']
+                            }
                         }
                     ]);
                 });
@@ -540,7 +571,7 @@ describe('Reporter', () => {
                             command: {
                                 clientFn: {
                                     args: [],
-                                    code: '(function(){ return (function () {return document.getElementById(\'#target\');});})();'
+                                    code: '(function(){ var func = function func() {return document.getElementById(\'#target\');}; return func;})();'
                                 },
                                 type: 'execute-client-function'
                             }
@@ -548,5 +579,192 @@ describe('Reporter', () => {
                     ]);
                 });
         });
+
+        it('Should not add action information in report if action was emitted after test done (GH-5650)', () => {
+            const log = [];
+
+            return runTests('testcafe-fixtures/index-test.js', 'Action done after test done', generateRunOptions(log))
+                .then(() => {
+                    expect(log).eql([
+                        { name: 'execute-client-function', action: 'start' },
+                        { name: 'wait', action: 'start' },
+                        {
+                            name:    'execute-client-function',
+                            action:  'done',
+                            command: {
+                                type:     'execute-client-function',
+                                clientFn: {
+                                    code: '(function(){ var func = function func() {return  __get$Loc(location) .reload(true);}; return func;})();',
+                                    args: []
+                                }
+                            }
+                        }
+                    ]);
+                });
+        });
+    });
+
+    describe('Action snapshots', () => {
+        it('Basic', () => {
+            const expected = [
+                { expression: 'Selector(\'#input\')', timeout: 11000, element: { tagName: 'input', attributes: { value: '100', type: 'text', id: 'input' } } },
+                { expression: 'Selector(\'#obscuredInput\')', element: { tagName: 'div', attributes: { id: 'fixed' } } },
+                { expression: 'Selector(\'#obscuredInput\')', element: { tagName: 'div', attributes: { id: 'fixed' } } },
+                { expression: 'Selector(\'#obscuredDiv\')', element: { tagName: 'div', attributes: { id: 'obscuredDiv' } } },
+                { expression: 'Selector(\'#p1\')', element: { attributes: { id: 'p1' }, tagName: 'p' } },
+                { expression: 'Selector(\'#p2\')', element: { attributes: { id: 'p2' }, tagName: 'p' } }
+            ];
+
+            function customReporter (log) {
+                return () => {
+                    return {
+                        async reportTestActionDone (name, { command, browser }) {
+                            log[browser.alias] = log[browser.alias] || [];
+
+                            if (command.selector)
+                                log[browser.alias].push(command.selector);
+
+                            if (command.startSelector)
+                                log[browser.alias].push(command.startSelector);
+
+                            if (command.endSelector)
+                                log[browser.alias].push(command.endSelector);
+
+                            if (command.destinationSelector)
+                                log[browser.alias].push(command.destinationSelector);
+                        },
+                        async reportTaskStart () {
+                        },
+                        async reportFixtureStart () {
+                        },
+                        async reportTestDone () {
+                        },
+                        async reportTaskDone () {
+                        }
+                    };
+                };
+            }
+
+            const log = {};
+
+            return runTests('testcafe-fixtures/snapshots-test.js', 'Basic', { reporter: customReporter(log) })
+                .then(() => {
+                    const logs = Object.values(log);
+
+                    expect(logs.length).gt(0);
+
+                    logs.forEach(browserLog => expect(browserLog).eql(expected));
+                });
+        });
+
+        it('Full snapshot', () => {
+            function customReporter (log) {
+                return () => {
+                    return {
+                        async reportTestActionDone (name, { command, browser }) {
+                            log[browser.alias] = log[browser.alias] || [];
+
+                            if (command.selector)
+                                log[browser.alias].push(command.selector);
+                        },
+                        async reportTaskStart () {
+                        },
+                        async reportFixtureStart () {
+                        },
+                        async reportTestDone () {
+                        },
+                        async reportTaskDone () {
+                        }
+                    };
+                };
+            }
+
+            const log = {};
+
+            return runTests('testcafe-fixtures/snapshots-test.js', 'Full snapshot', { reporter: customReporter(log) })
+                .then(() => {
+                    const logs = Object.values(log);
+
+                    expect(logs.length).gt(0);
+
+                    logs.forEach(browserLog => {
+                        expect(browserLog[0].expression).eql('Selector(\'#input\')');
+                        expect(browserLog[0].element.tagName).eql('input');
+                        expect(browserLog[0].element.attributes.type).eql('text');
+                    });
+                });
+        });
+    });
+
+    describe('Screenshot errors', () => {
+        it('Screenshot on action error', () => {
+            let testDoneErrors     = null;
+            const actionDoneErrors = [];
+
+            function screenshotReporter () {
+                return {
+                    async reportTestActionDone (name, { err }) {
+                        actionDoneErrors.push(err);
+                    },
+                    async reportTaskStart () {
+                    },
+                    async reportFixtureStart () {
+                    },
+                    async reportTestDone (name, testRunInfo) {
+                        testDoneErrors = testRunInfo.errs;
+                    },
+                    async reportTaskDone () {
+                    }
+                };
+            }
+
+            return runTests('testcafe-fixtures/index-test.js', 'Screenshot on action error', {
+                only:               'chrome',
+                reporter:           screenshotReporter,
+                screenshotsOnFails: true
+            })
+                .then(() => {
+                    expect(actionDoneErrors[0]).is.undefined;
+                    expect(actionDoneErrors[1].code).eql('E24');
+                    expect(testDoneErrors.map(err => err.code)).eql(['E24', 'E8']);
+                    expect(testDoneErrors[0].screenshotPath).is.not.empty;
+                    expect(testDoneErrors[0].screenshotPath).eql(testDoneErrors[1].screenshotPath);
+                });
+        });
+    });
+
+    it('Should raise an error when uncaught exception occurred in any reporter method', async () => {
+        function createReporterWithBrokenMethod (method) {
+            const base = {
+                async reportTaskStart () {},
+                async reportFixtureStart () {},
+                async reportTestDone () {},
+                async reportTaskDone () {}
+            };
+
+            base[method] = () => {
+                throw new Error('oops');
+            };
+
+            return () => base;
+        }
+
+        for (const method of Object.values(ReporterPluginMethod)) {
+            try {
+                await runTests(
+                    'testcafe-fixtures/index-test.js',
+                    'Simple test',
+                    {
+                        reporter:   createReporterWithBrokenMethod(method),
+                        shouldFail: true
+                    }
+                );
+
+                throw new Error('Promise rejection expected');
+            }
+            catch (err) {
+                expect(err.message).startsWith(`An uncaught error occurred in the "function () {}" reporter's "${method}" method. Error details:\nError: oops`);
+            }
+        }
     });
 });

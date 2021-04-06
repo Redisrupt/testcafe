@@ -3,9 +3,7 @@ import moment from 'moment';
 import Capturer from './capturer';
 import PathPattern from '../utils/path-pattern';
 import getCommonPath from '../utils/get-common-path';
-
-
-const SCREENSHOT_EXTENSION = 'png';
+import DEFAULT_SCREENSHOT_EXTENSION from './default-extension';
 
 export default class Screenshots {
     constructor ({ enabled, path, pathPattern, fullPage }) {
@@ -20,6 +18,7 @@ export default class Screenshots {
     _addTestEntry (test) {
         const testEntry = {
             test:        test,
+            testRuns:    {},
             screenshots: []
         };
 
@@ -58,7 +57,7 @@ export default class Screenshots {
 
     createCapturerFor (test, testIndex, quarantine, connection, warningLog) {
         const testEntry   = this._ensureTestEntry(test);
-        const pathPattern = new PathPattern(this.screenshotsPattern, SCREENSHOT_EXTENSION, {
+        const pathPattern = new PathPattern(this.screenshotsPattern, DEFAULT_SCREENSHOT_EXTENSION, {
             testIndex,
             quarantineAttempt: quarantine ? quarantine.getNextAttemptNumber() : null,
             now:               this.now,
@@ -68,5 +67,11 @@ export default class Screenshots {
         });
 
         return new Capturer(this.screenshotsPath, testEntry, connection, pathPattern, this.fullPage, warningLog);
+    }
+
+    addTestRun (test, testRun) {
+        const testEntry = this._getTestEntry(test);
+
+        testEntry.testRuns[testRun.browserConnection.id] = testRun;
     }
 }

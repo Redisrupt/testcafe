@@ -11,6 +11,7 @@ const site                       = require('./site');
 const RemoteConnector            = require('./remote-connector');
 const getTestError               = require('./get-test-error.js');
 const { createSimpleTestStream } = require('./utils/stream');
+const BrowserConnectionStatus    = require('../../lib/browser/connection/status');
 
 let testCafe     = null;
 let browsersInfo = null;
@@ -28,7 +29,7 @@ const FUNCTIONAL_TESTS_ASSERTION_TIMEOUT = 1000;
 const FUNCTIONAL_TESTS_PAGE_LOAD_TIMEOUT = 0;
 
 const environment     = config.currentEnvironment;
-const browserProvider = process.env.BROWSER_PROVIDER;
+const browserProvider = config.currentEnvironment.provider;
 const isBrowserStack  = browserProvider === config.browserProviderNames.browserstack;
 
 config.browsers = environment.browsers;
@@ -52,7 +53,7 @@ function getBrowserInfo (settings) {
 
             return browserProviderPool
                 .getBrowserInfo(settings.browserName)
-                .then(browserInfo => new BrowserConnection(testCafe.browserConnectionGateway, browserInfo, true, process.env.ALLOW_MULTIPLE_WINDOWS));
+                .then(browserInfo => new BrowserConnection(testCafe.browserConnectionGateway, browserInfo, true));
         })
         .then(connection => {
             return {
@@ -102,7 +103,9 @@ function openRemoteBrowsers () {
 }
 
 function waitUtilBrowserConnectionOpened (connection) {
-    const connectedPromise = connection.opened ? Promise.resolve() : promisifyEvent(connection, 'opened');
+    const connectedPromise = connection.status === BrowserConnectionStatus.opened
+        ? Promise.resolve()
+        : promisifyEvent(connection, 'opened');
 
     return connectedPromise
         .then(() => {
@@ -141,7 +144,19 @@ before(function () {
 
     const { devMode, retryTestPages } = config;
 
-    return createTestCafe(config.testCafe.hostname, config.testCafe.port1, config.testCafe.port2, null, devMode, retryTestPages)
+    const testCafeOptions = {
+        hostname: config.testCafe.hostname,
+        port1:    config.testCafe.port1,
+        port2:    config.testCafe.port2,
+
+        developmentMode: devMode,
+
+        retryTestPages,
+
+        experimentalCompilerService: !!process.env.EXPERIMENTAL_COMPILER_SERVICE
+    };
+
+    return createTestCafe(testCafeOptions)
         .then(function (tc) {
             testCafe = tc;
 
@@ -183,6 +198,7 @@ before(function () {
                 const screenshotPath              = opts && opts.setScreenshotPath ? config.testScreenshotsDir : '';
                 const videoPath                   = opts && opts.setVideoPath ? config.testVideosDir : '';
                 const clientScripts               = opts && opts.clientScripts || [];
+                const compilerOptions             = opts && opts.compilerOptions;
 
                 const {
                     skipJsErrors,
@@ -205,7 +221,9 @@ before(function () {
                     disablePageCaching,
                     disablePageReloads,
                     disableScreenshots,
-                    allowMultipleWindows
+                    disableMultipleWindows,
+                    pageRequestTimeout,
+                    ajaxRequestTimeout
                 } = opts;
 
                 const actualBrowsers = browsersInfo.filter(browserInfo => {
@@ -218,7 +236,8 @@ before(function () {
                 });
 
                 if (!actualBrowsers.length) {
-                    mocha.test.skip();
+                    global.currentTest.skip();
+
                     return Promise.resolve();
                 }
 
@@ -253,6 +272,7 @@ before(function () {
                     .video(videoPath, videoOptions, videoEncodingOptions)
                     .startApp(appCommand, appInitDelay)
                     .clientScripts(clientScripts)
+                    .compilerOptions(compilerOptions)
                     .run({
                         skipJsErrors,
                         quarantineMode,
@@ -265,7 +285,9 @@ before(function () {
                         disablePageCaching,
                         disablePageReloads,
                         disableScreenshots,
-                        allowMultipleWindows
+                        disableMultipleWindows,
+                        pageRequestTimeout,
+                        ajaxRequestTimeout
                     })
                     .then(failedCount => {
                         if (customReporters)
@@ -277,7 +299,7 @@ before(function () {
                             taskReport.fixtures[0].tests[0] :
                             taskReport;
 
-                        testReport.warnings   = taskReport.warnings;
+                        testReport.warnings    = taskReport.warnings;
                         testReport.failedCount = failedCount;
 
                         global.testReport = testReport;
@@ -287,6 +309,10 @@ before(function () {
                     .catch(handleError);
             };
         });
+});
+
+beforeEach(function () {
+    global.currentTest = this.currentTest;
 });
 
 after(function () {
@@ -304,10 +330,4 @@ after(function () {
 
     return closeLocalBrowsers();
 });
-
-// TODO: Run takeScreenshot tests first because other tests heavily impact them
-if (config.useLocalBrowsers && !config.isLegacyEnvironment && !process.env.ALLOW_MULTIPLE_WINDOWS) {
-    require('./fixtures/api/es-next/take-screenshot/test');
-    require('./fixtures/screenshots-on-fails/test');
-}
 

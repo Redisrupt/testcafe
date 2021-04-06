@@ -1,4 +1,4 @@
-import { has } from 'lodash';
+import { has, set } from 'lodash';
 import { Command } from 'commander';
 import dedent from 'dedent';
 import { readSync as read } from 'read-file-relative';
@@ -7,12 +7,24 @@ import { RUNTIME_ERRORS } from '../errors/types';
 import { assertType, is } from '../errors/runtime/type-assertions';
 import getViewPortWidth from '../utils/get-viewport-width';
 import { wordWrap, splitQuotedText } from '../utils/string';
-import { getSSLOptions, getScreenshotOptions, getVideoOptions, getMetaOptions, getGrepOptions } from '../utils/get-options';
+import {
+    getSSLOptions,
+    getScreenshotOptions,
+    getVideoOptions,
+    getMetaOptions,
+    getGrepOptions,
+    getCompilerOptions
+} from '../utils/get-options';
+
 import getFilterFn from '../utils/get-filter-fn';
 import SCREENSHOT_OPTION_NAMES from '../configuration/screenshot-option-names';
 import RUN_OPTION_NAMES from '../configuration/run-option-names';
-import { Dictionary, ReporterOption, RunnerRunOptions } from '../configuration/interfaces';
-import * as ALLOW_MULTIPLE_WINDOWS_OPTION from '../configuration/allow-multiple-windows-option';
+import {
+    Dictionary,
+    ReporterOption,
+    RunnerRunOptions
+} from '../configuration/interfaces';
+
 
 const REMOTE_ALIAS_RE = /^remote(?::(\d*))?$/;
 
@@ -45,6 +57,9 @@ interface CommandLineOptions {
     selectorTimeout?: string | number;
     speed?: string | number;
     pageLoadTimeout?: string | number;
+    pageRequestTimeout?: string | number;
+    ajaxRequestTimeout?: string | number;
+    browserInitTimeout?: string | number;
     concurrency?: string | number;
     ports?: string | number[];
     providerName?: string;
@@ -55,21 +70,25 @@ interface CommandLineOptions {
     screenshotsOnFails?: boolean;
     videoOptions?: string | Dictionary<number | string | boolean>;
     videoEncodingOptions?: string | Dictionary<number | string | boolean>;
+    compilerOptions?: string | Dictionary<number | string | boolean>;
+    configFile?: string;
 }
 
 export default class CLIArgumentParser {
-    private program: Command;
+    private readonly program: Command;
+    private readonly experimental: Command;
     private cwd: string;
     private remoteCount: number;
     public opts: CommandLineOptions;
     public args: string[];
 
     public constructor (cwd: string) {
-        this.program     = new Command('testcafe');
-        this.cwd         = cwd || process.cwd();
-        this.remoteCount = 0;
-        this.opts        = {};
-        this.args        = [];
+        this.program      = new Command('testcafe');
+        this.experimental = new Command('testcafe-experimental');
+        this.cwd          = cwd || process.cwd();
+        this.remoteCount  = 0;
+        this.opts         = {};
+        this.args         = [];
 
         this._describeProgram();
     }
@@ -116,6 +135,9 @@ export default class CLIArgumentParser {
             .option('--selector-timeout <ms>', 'specify the time within which selectors make attempts to obtain a node to be returned')
             .option('--assertion-timeout <ms>', 'specify the time within which assertion should pass')
             .option('--page-load-timeout <ms>', 'specify the time within which TestCafe waits for the `window.load` event to fire on page load before proceeding to the next test action')
+            .option('--page-request-timeout <ms>', "specifies the timeout in milliseconds to complete the request for the page's HTML")
+            .option('--ajax-request-timeout <ms>', 'specifies the timeout in milliseconds to complete the AJAX requests (XHR or fetch)')
+            .option('--browser-init-timeout <ms>', 'specify the time (in milliseconds) TestCafe waits for the browser to start')
             .option('--speed <factor>', 'set the speed of test execution (0.01 ... 1)')
             .option('--ports <port1,port2>', 'specify custom port numbers')
             .option('--hostname <name>', 'specify the hostname')
@@ -128,20 +150,26 @@ export default class CLIArgumentParser {
             .option('--dev', 'enables mechanisms to log and diagnose errors')
             .option('--qr-code', 'outputs QR-code that repeats URLs used to connect the remote browsers')
             .option('--sf, --stop-on-first-fail', 'stop an entire test run if any test fails')
+            .option('--config-file <path>', 'specify a custom path to the testcafe configuration file')
             .option('--ts-config-path <path>', 'use a custom TypeScript configuration file and specify its location')
             .option('--cs, --client-scripts <paths>', 'inject scripts into tested pages', this._parseList, [])
             .option('--disable-page-caching', 'disable page caching during test execution')
             .option('--disable-page-reloads', 'disable page reloads between tests')
+            .option('--retry-test-pages', 'retry network requests to test pages during test execution')
             .option('--disable-screenshots', 'disable screenshots')
             .option('--screenshots-full-page', 'enable full-page screenshots')
-            .option(ALLOW_MULTIPLE_WINDOWS_OPTION.FLAGS, ALLOW_MULTIPLE_WINDOWS_OPTION.DESCRIPTION)
+            .option('--compiler-options <option=value[,...]>', 'specify test file compiler options')
 
             // NOTE: these options will be handled by chalk internally
             .option('--color', 'force colors in command line')
             .option('--no-color', 'disable colors in command line');
 
-        // NOTE: temporary hide '--allow-multiple-windows' option from --help command
-        ALLOW_MULTIPLE_WINDOWS_OPTION.removeOptionDescriptionFromHelp(this.program);
+        // NOTE: temporary hide experimental options from --help command
+        this.experimental
+            .allowUnknownOption()
+            .option('--disable-multiple-windows', 'disable multiple windows mode')
+            .option('--experimental-compiler-service', 'run compiler in a separate process')
+            .option('--cache', 'cache web assets between test runs');
     }
 
     private _parseList (val: string): string[] {
@@ -206,6 +234,33 @@ export default class CLIArgumentParser {
 
             this.opts.pageLoadTimeout = parseInt(this.opts.pageLoadTimeout as string, 10);
         }
+    }
+
+    private _parsePageRequestTimeout (): void {
+        if (!this.opts.pageRequestTimeout)
+            return;
+
+        assertType(is.nonNegativeNumberString, null, 'Page request timeout', this.opts.pageRequestTimeout);
+
+        this.opts.pageRequestTimeout = parseInt(this.opts.pageRequestTimeout as string, 10);
+    }
+
+    private _parseAjaxRequestTimeout (): void {
+        if (!this.opts.ajaxRequestTimeout)
+            return;
+
+        assertType(is.nonNegativeNumberString, null, 'Ajax request timeout', this.opts.ajaxRequestTimeout);
+
+        this.opts.ajaxRequestTimeout = parseInt(this.opts.ajaxRequestTimeout as string, 10);
+    }
+
+    private _parseBrowserInitTimeout (): void {
+        if (!this.opts.browserInitTimeout)
+            return;
+
+        assertType(is.nonNegativeNumberString, null, 'Browser initialization timeout', this.opts.browserInitTimeout);
+
+        this.opts.browserInitTimeout = parseInt(this.opts.browserInitTimeout as string, 10);
     }
 
     private _parseSpeed (): void {
@@ -284,6 +339,19 @@ export default class CLIArgumentParser {
             this.opts.videoEncodingOptions = await getVideoOptions(this.opts.videoEncodingOptions as string);
     }
 
+    private async _parseCompilerOptions (): Promise<void> {
+        if (!this.opts.compilerOptions)
+            return;
+
+        const parsedCompilerOptions = await getCompilerOptions(this.opts.compilerOptions as string);
+        const resultCompilerOptions = Object.create(null);
+
+        for (const [key, value] of Object.entries(parsedCompilerOptions))
+            set(resultCompilerOptions, key, value);
+
+        this.opts.compilerOptions = resultCompilerOptions;
+    }
+
     private _parseListBrowsers (): void {
         const listBrowserOption = this.opts.listBrowsers;
 
@@ -297,14 +365,15 @@ export default class CLIArgumentParser {
 
     public async parse (argv: string[]): Promise<void> {
         this.program.parse(argv);
+        this.experimental.parse(argv);
 
         this.args = this.program.args;
 
-        this.opts = this.program.opts();
+        this.opts = { ...this.experimental.opts(), ...this.program.opts() };
 
         this._parseListBrowsers();
 
-        // NOTE: the '-list-browsers' option only lists browsers and immediately exits the app.
+        // NOTE: the '--list-browsers' option only lists browsers and immediately exits the app.
         // Therefore, we don't need to process other arguments.
         if (this.opts.listBrowsers)
             return;
@@ -312,6 +381,9 @@ export default class CLIArgumentParser {
         this._parseSelectorTimeout();
         this._parseAssertionTimeout();
         this._parsePageLoadTimeout();
+        this._parsePageRequestTimeout();
+        this._parseAjaxRequestTimeout();
+        this._parseBrowserInitTimeout();
         this._parseAppInitDelay();
         this._parseSpeed();
         this._parsePorts();
@@ -322,6 +394,7 @@ export default class CLIArgumentParser {
         await this._parseFilteringOptions();
         await this._parseScreenshotOptions();
         await this._parseVideoOptions();
+        await this._parseCompilerOptions();
         await this._parseSslOptions();
         await this._parseReporters();
     }

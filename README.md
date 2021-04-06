@@ -5,13 +5,7 @@ This fork adds the following:
 - Compile modules using Babel 7
 - Typescript support using Babel 7 instead of the typescript compiler
 
-<p align="center">
-  <a href="https://www.devexpress.com/products/testcafestudio/?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-banner">
-    <img src="https://raw.github.com/DevExpress/testcafe/master/media/testcafe-studio-banner.png" alt="Try TestCafe Studio IDE" />
-  </a>
-</p>
-
-<p align="center">
+<h1 align="center">
     <a href="https://devexpress.github.io/testcafe">
         <img src="https://raw.githubusercontent.com/DevExpress/testcafe/master/media/testcafe-logo.svg?sanitize=true" alt="testcafe" />
     </a>
@@ -82,7 +76,7 @@ TestCafe reports JS errors that it finds on the webpage.
 Tests automatically fail because of that.
 However, you can disable this.
 
-**Concurrent tests launch**<br/>
+**Concurrent test launch**<br/>
 TestCafe can open multiple instances of the same browser to run parallel
 tests which decreases test execution time.
 
@@ -115,7 +109,7 @@ Read the following article to learn how TestCafe Studio could fit into your work
 
 ### Installation
 
-Ensure that [Node.js](https://nodejs.org/) (version 6 or newer) and [npm](https://www.npmjs.com/) are installed on your computer before running it:
+Ensure that [Node.js](https://nodejs.org/) ([Current or Active LTS](https://github.com/nodejs/Release#release-phases) is recommended, version 10 at minimum) and [npm](https://www.npmjs.com/) are installed on your computer before running it:
 
 ```sh
 npm install -g testcafe
@@ -159,9 +153,9 @@ testcafe chrome test1.js
 
 TestCafe opens the browser and starts executing the test.
 
-> Important! Make sure to stay in the browser tab that is running tests.
-> Do not minimize the browser window. Tests are not guaranteed to execute correctly
-> in inactive tabs and minimized browser windows because they switch to a lower resource consumption mode.
+> Important! Make sure the browser tab that runs tests stays active.
+> Do not minimize the browser window. Inactive tabs and minimized browser windows switch
+> to a lower resource consumption mode where tests are not guaranteed to execute correctly.
 
 ### Viewing the Results
 
@@ -203,64 +197,74 @@ If you want your plugin to be listed below, [send us a note in a Github issue](h
 
 Thank you to all the people who already contributed to TestCafe!
 
-[<img alt="Farfurix" src="https://avatars2.githubusercontent.com/u/30019338?v=4&s=117" width="117">](https://github.com/Farfurix) |[<img alt="Nuarat" src="https://avatars0.githubusercontent.com/u/11683678?v=4&s=117" width="117">](https://github.com/Nuarat) |[<img alt="aleks-pro" src="https://avatars1.githubusercontent.com/u/14822473?v=4&s=117" width="117">](https://github.com/aleks-pro) |[<img alt="ericyd" src="https://avatars2.githubusercontent.com/u/8379268?v=4&s=117" width="117">](https://github.com/ericyd) |[<img alt="NickCis" src="https://avatars0.githubusercontent.com/u/174561?v=4&s=117" width="117">](https://github.com/NickCis) |[<img alt="timnederhoff" src="https://avatars1.githubusercontent.com/u/12087707?v=4&s=117" width="117">](https://github.com/timnederhoff) |
+[<img alt="aha-oretama" src="https://avatars0.githubusercontent.com/u/7259161?v=4&s=117" width="117">](https://github.com/aha-oretama) |[<img alt="ai" src="https://avatars1.githubusercontent.com/u/19343?v=4&s=117" width="117">](https://github.com/ai) |[<img alt="aleks-pro" src="https://avatars1.githubusercontent.com/u/14822473?v=4&s=117" width="117">](https://github.com/aleks-pro) |[<img alt="AlexanderMoiseev" src="https://avatars3.githubusercontent.com/u/1498953?v=4&s=117" width="117">](https://github.com/AlexanderMoiseev) |[<img alt="AlexanderMoskovkin" src="https://avatars0.githubusercontent.com/u/12047804?v=4&s=117" width="117">](https://github.com/AlexanderMoskovkin) |[<img alt="alexey-lin" src="https://avatars3.githubusercontent.com/u/13483856?v=4&s=117" width="117">](https://github.com/alexey-lin) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[Farfurix](https://github.com/Farfurix) |[Nuarat](https://github.com/Nuarat) |[aleks-pro](https://github.com/aleks-pro) |[ericyd](https://github.com/ericyd) |[NickCis](https://github.com/NickCis) |[timnederhoff](https://github.com/timnederhoff) |
+[aha-oretama](https://github.com/aha-oretama) |[ai](https://github.com/ai) |[aleks-pro](https://github.com/aleks-pro) |[AlexanderMoiseev](https://github.com/AlexanderMoiseev) |[AlexanderMoskovkin](https://github.com/AlexanderMoskovkin) |[alexey-lin](https://github.com/alexey-lin) |
 
-[<img alt="andrewbranch" src="https://avatars0.githubusercontent.com/u/3277153?v=4&s=117" width="117">](https://github.com/andrewbranch) |[<img alt="radarhere" src="https://avatars2.githubusercontent.com/u/3112309?v=4&s=117" width="117">](https://github.com/radarhere) |[<img alt="ai" src="https://avatars1.githubusercontent.com/u/19343?v=4&s=117" width="117">](https://github.com/ai) |[<img alt="AndyWendt" src="https://avatars0.githubusercontent.com/u/6130713?v=4&s=117" width="117">](https://github.com/AndyWendt) |[<img alt="arubtsov" src="https://avatars0.githubusercontent.com/u/10169557?v=4&s=117" width="117">](https://github.com/arubtsov) |[<img alt="infctr" src="https://avatars1.githubusercontent.com/u/15550153?v=4&s=117" width="117">](https://github.com/infctr) |
+[<img alt="AlexKamaev" src="https://avatars3.githubusercontent.com/u/1678902?v=4&s=117" width="117">](https://github.com/AlexKamaev) |[<img alt="AlexSkorkin" src="https://avatars3.githubusercontent.com/u/995726?v=4&s=117" width="117">](https://github.com/AlexSkorkin) |[<img alt="alexwybraniec" src="https://avatars2.githubusercontent.com/u/521536?v=4&s=117" width="117">](https://github.com/alexwybraniec) |[<img alt="andrewbranch" src="https://avatars0.githubusercontent.com/u/3277153?v=4&s=117" width="117">](https://github.com/andrewbranch) |[<img alt="AndreyBelym" src="https://avatars1.githubusercontent.com/u/4479386?v=4&s=117" width="117">](https://github.com/AndreyBelym) |[<img alt="AndyWendt" src="https://avatars0.githubusercontent.com/u/6130713?v=4&s=117" width="117">](https://github.com/AndyWendt) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[andrewbranch](https://github.com/andrewbranch) |[radarhere](https://github.com/radarhere) |[ai](https://github.com/ai) |[AndyWendt](https://github.com/AndyWendt) |[arubtsov](https://github.com/arubtsov) |[infctr](https://github.com/infctr) |
+[AlexKamaev](https://github.com/AlexKamaev) |[AlexSkorkin](https://github.com/AlexSkorkin) |[alexwybraniec](https://github.com/alexwybraniec) |[andrewbranch](https://github.com/andrewbranch) |[AndreyBelym](https://github.com/AndreyBelym) |[AndyWendt](https://github.com/AndyWendt) |
 
-[<img alt="benmonro" src="https://avatars3.githubusercontent.com/u/399236?v=4&s=117" width="117">](https://github.com/benmonro) |[<img alt="lzxb" src="https://avatars0.githubusercontent.com/u/8424643?v=4&s=117" width="117">](https://github.com/lzxb) |[<img alt="smockle" src="https://avatars1.githubusercontent.com/u/3104489?v=4&s=117" width="117">](https://github.com/smockle) |[<img alt="beyondcompute" src="https://avatars0.githubusercontent.com/u/248055?v=4&s=117" width="117">](https://github.com/beyondcompute) |[<img alt="GeoffreyBooth" src="https://avatars2.githubusercontent.com/u/456802?v=4&s=117" width="117">](https://github.com/GeoffreyBooth) |[<img alt="Ivan-Katovich" src="https://avatars2.githubusercontent.com/u/7858279?v=4&s=117" width="117">](https://github.com/Ivan-Katovich) |
+[<img alt="anthophobiac" src="https://avatars1.githubusercontent.com/u/16448031?v=4&s=117" width="117">](https://github.com/anthophobiac) |[<img alt="arubtsov" src="https://avatars0.githubusercontent.com/u/10169557?v=4&s=117" width="117">](https://github.com/arubtsov) |[<img alt="augustomezencio-hotmart" src="https://avatars3.githubusercontent.com/u/25016353?v=4&s=117" width="117">](https://github.com/augustomezencio-hotmart) |[<img alt="bdwain" src="https://avatars1.githubusercontent.com/u/3982094?v=4&s=117" width="117">](https://github.com/bdwain) |[<img alt="benmonro" src="https://avatars3.githubusercontent.com/u/399236?v=4&s=117" width="117">](https://github.com/benmonro) |[<img alt="beyondcompute" src="https://avatars0.githubusercontent.com/u/248055?v=4&s=117" width="117">](https://github.com/beyondcompute) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[benmonro](https://github.com/benmonro) |[lzxb](https://github.com/lzxb) |[smockle](https://github.com/smockle) |[beyondcompute](https://github.com/beyondcompute) |[GeoffreyBooth](https://github.com/GeoffreyBooth) |[Ivan-Katovich](https://github.com/Ivan-Katovich) |
+[anthophobiac](https://github.com/anthophobiac) |[arubtsov](https://github.com/arubtsov) |[augustomezencio-hotmart](https://github.com/augustomezencio-hotmart) |[bdwain](https://github.com/bdwain) |[benmonro](https://github.com/benmonro) |[beyondcompute](https://github.com/beyondcompute) |
 
-[<img alt="jamesgeorge007" src="https://avatars2.githubusercontent.com/u/25279263?v=4&s=117" width="117">](https://github.com/jamesgeorge007) |[<img alt="mcjim" src="https://avatars0.githubusercontent.com/u/485440?v=4&s=117" width="117">](https://github.com/mcjim) |[<img alt="kanhaiya15" src="https://avatars1.githubusercontent.com/u/38152453?v=4&s=117" width="117">](https://github.com/kanhaiya15) |[<img alt="dej611" src="https://avatars1.githubusercontent.com/u/924948?v=4&s=117" width="117">](https://github.com/dej611) |[<img alt="MatthewNielsen27" src="https://avatars2.githubusercontent.com/u/35040439?v=4&s=117" width="117">](https://github.com/MatthewNielsen27) |[<img alt="morfey13" src="https://avatars0.githubusercontent.com/u/2048346?v=4&s=117" width="117">](https://github.com/morfey13) |
+[<img alt="bill-looby-i" src="https://avatars1.githubusercontent.com/u/51128939?v=4&s=117" width="117">](https://github.com/bill-looby-i) |[<img alt="bsmithb2" src="https://avatars2.githubusercontent.com/u/1773789?v=4&s=117" width="117">](https://github.com/bsmithb2) |[<img alt="caseyWebb" src="https://avatars3.githubusercontent.com/u/5419074?v=4&s=117" width="117">](https://github.com/caseyWebb) |[<img alt="cdrini" src="https://avatars3.githubusercontent.com/u/6251786?v=4&s=117" width="117">](https://github.com/cdrini) |[<img alt="cgfarmer4" src="https://avatars2.githubusercontent.com/u/336449?v=4&s=117" width="117">](https://github.com/cgfarmer4) |[<img alt="churkin" src="https://avatars3.githubusercontent.com/u/5182202?v=4&s=117" width="117">](https://github.com/churkin) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[jamesgeorge007](https://github.com/jamesgeorge007) |[mcjim](https://github.com/mcjim) |[kanhaiya15](https://github.com/kanhaiya15) |[dej611](https://github.com/dej611) |[MatthewNielsen27](https://github.com/MatthewNielsen27) |[morfey13](https://github.com/morfey13) |
+[bill-looby-i](https://github.com/bill-looby-i) |[bsmithb2](https://github.com/bsmithb2) |[caseyWebb](https://github.com/caseyWebb) |[cdrini](https://github.com/cdrini) |[cgfarmer4](https://github.com/cgfarmer4) |[churkin](https://github.com/churkin) |
 
-[<img alt="renancouto" src="https://avatars0.githubusercontent.com/u/230893?v=4&s=117" width="117">](https://github.com/renancouto) |[<img alt="honsq90" src="https://avatars3.githubusercontent.com/u/1791439?v=4&s=117" width="117">](https://github.com/honsq90) |[<img alt="sgrillon14" src="https://avatars0.githubusercontent.com/u/5530550?v=4&s=117" width="117">](https://github.com/sgrillon14) |[<img alt="tobiasbueschel" src="https://avatars3.githubusercontent.com/u/13087421?v=4&s=117" width="117">](https://github.com/tobiasbueschel) |[<img alt="raspo" src="https://avatars2.githubusercontent.com/u/927264?v=4&s=117" width="117">](https://github.com/raspo) |[<img alt="varunkumar" src="https://avatars1.githubusercontent.com/u/509433?v=4&s=117" width="117">](https://github.com/varunkumar) |
+[<img alt="dej611" src="https://avatars1.githubusercontent.com/u/924948?v=4&s=117" width="117">](https://github.com/dej611) |[<img alt="DIRECTcut" src="https://avatars0.githubusercontent.com/u/49588154?v=4&s=117" width="117">](https://github.com/DIRECTcut) |[<img alt="Dmitry-Ostashev" src="https://avatars3.githubusercontent.com/u/24777868?v=4&s=117" width="117">](https://github.com/Dmitry-Ostashev) |[<img alt="ericyd" src="https://avatars2.githubusercontent.com/u/8379268?v=4&s=117" width="117">](https://github.com/ericyd) |[<img alt="Farfurix" src="https://avatars2.githubusercontent.com/u/30019338?v=4&s=117" width="117">](https://github.com/Farfurix) |[<img alt="GeoffreyBooth" src="https://avatars2.githubusercontent.com/u/456802?v=4&s=117" width="117">](https://github.com/GeoffreyBooth) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[renancouto](https://github.com/renancouto) |[honsq90](https://github.com/honsq90) |[sgrillon14](https://github.com/sgrillon14) |[tobiasbueschel](https://github.com/tobiasbueschel) |[raspo](https://github.com/raspo) |[varunkumar](https://github.com/varunkumar) |
+[dej611](https://github.com/dej611) |[DIRECTcut](https://github.com/DIRECTcut) |[Dmitry-Ostashev](https://github.com/Dmitry-Ostashev) |[ericyd](https://github.com/ericyd) |[Farfurix](https://github.com/Farfurix) |[GeoffreyBooth](https://github.com/GeoffreyBooth) |
 
-[<img alt="theghostbel" src="https://avatars2.githubusercontent.com/u/482899?v=4&s=117" width="117">](https://github.com/theghostbel) |[<img alt="vitalics" src="https://avatars2.githubusercontent.com/u/8816260?v=4&s=117" width="117">](https://github.com/vitalics) |[<img alt="aha-oretama" src="https://avatars0.githubusercontent.com/u/7259161?v=4&s=117" width="117">](https://github.com/aha-oretama) |[<img alt="bsmithb2" src="https://avatars2.githubusercontent.com/u/1773789?v=4&s=117" width="117">](https://github.com/bsmithb2) |[<img alt="link89" src="https://avatars2.githubusercontent.com/u/3314130?v=4&s=117" width="117">](https://github.com/link89) |[<img alt="murajun1978" src="https://avatars3.githubusercontent.com/u/911903?v=4&s=117" width="117">](https://github.com/murajun1978) |
+[<img alt="helen-dikareva" src="https://avatars1.githubusercontent.com/u/12034551?v=4&s=117" width="117">](https://github.com/helen-dikareva) |[<img alt="honsq90" src="https://avatars3.githubusercontent.com/u/1791439?v=4&s=117" width="117">](https://github.com/honsq90) |[<img alt="infctr" src="https://avatars1.githubusercontent.com/u/15550153?v=4&s=117" width="117">](https://github.com/infctr) |[<img alt="inikulin" src="https://avatars1.githubusercontent.com/u/453071?v=4&s=117" width="117">](https://github.com/inikulin) |[<img alt="Ivan-Katovich" src="https://avatars2.githubusercontent.com/u/7858279?v=4&s=117" width="117">](https://github.com/Ivan-Katovich) |[<img alt="jamesgeorge007" src="https://avatars2.githubusercontent.com/u/25279263?v=4&s=117" width="117">](https://github.com/jamesgeorge007) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[theghostbel](https://github.com/theghostbel) |[vitalics](https://github.com/vitalics) |[aha-oretama](https://github.com/aha-oretama) |[bsmithb2](https://github.com/bsmithb2) |[link89](https://github.com/link89) |[murajun1978](https://github.com/murajun1978) |
+[helen-dikareva](https://github.com/helen-dikareva) |[honsq90](https://github.com/honsq90) |[infctr](https://github.com/infctr) |[inikulin](https://github.com/inikulin) |[Ivan-Katovich](https://github.com/Ivan-Katovich) |[jamesgeorge007](https://github.com/jamesgeorge007) |
 
-[<img alt="VasilyStrelyaev" src="https://avatars1.githubusercontent.com/u/11459924?v=4&s=117" width="117">](https://github.com/VasilyStrelyaev) |[<img alt="AndreyBelym" src="https://avatars1.githubusercontent.com/u/4479386?v=4&s=117" width="117">](https://github.com/AndreyBelym) |[<img alt="AlexanderMoskovkin" src="https://avatars0.githubusercontent.com/u/12047804?v=4&s=117" width="117">](https://github.com/AlexanderMoskovkin) |[<img alt="inikulin" src="https://avatars1.githubusercontent.com/u/453071?v=4&s=117" width="117">](https://github.com/inikulin) |[<img alt="helen-dikareva" src="https://avatars1.githubusercontent.com/u/12034551?v=4&s=117" width="117">](https://github.com/helen-dikareva) |[<img alt="AlexKamaev" src="https://avatars3.githubusercontent.com/u/1678902?v=4&s=117" width="117">](https://github.com/AlexKamaev) |
+[<img alt="jaypea" src="https://avatars2.githubusercontent.com/u/367199?v=4&s=117" width="117">](https://github.com/jaypea) |[<img alt="kanhaiya15" src="https://avatars1.githubusercontent.com/u/38152453?v=4&s=117" width="117">](https://github.com/kanhaiya15) |[<img alt="kirovboris" src="https://avatars0.githubusercontent.com/u/3633477?v=4&s=117" width="117">](https://github.com/kirovboris) |[<img alt="kubejm" src="https://avatars3.githubusercontent.com/u/8680565?v=4&s=117" width="117">](https://github.com/kubejm) |[<img alt="LavrovArtem" src="https://avatars2.githubusercontent.com/u/5373460?v=4&s=117" width="117">](https://github.com/LavrovArtem) |[<img alt="link89" src="https://avatars2.githubusercontent.com/u/3314130?v=4&s=117" width="117">](https://github.com/link89) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[VasilyStrelyaev](https://github.com/VasilyStrelyaev) |[AndreyBelym](https://github.com/AndreyBelym) |[AlexanderMoskovkin](https://github.com/AlexanderMoskovkin) |[inikulin](https://github.com/inikulin) |[helen-dikareva](https://github.com/helen-dikareva) |[AlexKamaev](https://github.com/AlexKamaev) |
+[jaypea](https://github.com/jaypea) |[kanhaiya15](https://github.com/kanhaiya15) |[kirovboris](https://github.com/kirovboris) |[kubejm](https://github.com/kubejm) |[LavrovArtem](https://github.com/LavrovArtem) |[link89](https://github.com/link89) |
 
-[<img alt="miherlosev" src="https://avatars2.githubusercontent.com/u/4133518?v=4&s=117" width="117">](https://github.com/miherlosev) |[<img alt="MargaritaLoseva" src="https://avatars2.githubusercontent.com/u/12034505?v=4&s=117" width="117">](https://github.com/MargaritaLoseva) |[<img alt="LavrovArtem" src="https://avatars2.githubusercontent.com/u/5373460?v=4&s=117" width="117">](https://github.com/LavrovArtem) |[<img alt="churkin" src="https://avatars3.githubusercontent.com/u/5182202?v=4&s=117" width="117">](https://github.com/churkin) |[<img alt="kirovboris" src="https://avatars0.githubusercontent.com/u/3633477?v=4&s=117" width="117">](https://github.com/kirovboris) |[<img alt="AlexSkorkin" src="https://avatars3.githubusercontent.com/u/995726?v=4&s=117" width="117">](https://github.com/AlexSkorkin) |
+[<img alt="lzxb" src="https://avatars0.githubusercontent.com/u/8424643?v=4&s=117" width="117">](https://github.com/lzxb) |[<img alt="macdonaldr93" src="https://avatars1.githubusercontent.com/u/5184848?v=4&s=117" width="117">](https://github.com/macdonaldr93) |[<img alt="MargaritaLoseva" src="https://avatars2.githubusercontent.com/u/12034505?v=4&s=117" width="117">](https://github.com/MargaritaLoseva) |[<img alt="Marketionist" src="https://avatars2.githubusercontent.com/u/534603?v=4&s=117" width="117">](https://github.com/Marketionist) |[<img alt="MatthewNielsen27" src="https://avatars2.githubusercontent.com/u/35040439?v=4&s=117" width="117">](https://github.com/MatthewNielsen27) |[<img alt="mattmanske" src="https://avatars0.githubusercontent.com/u/2078566?v=4&s=117" width="117">](https://github.com/mattmanske) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[miherlosev](https://github.com/miherlosev) |[MargaritaLoseva](https://github.com/MargaritaLoseva) |[LavrovArtem](https://github.com/LavrovArtem) |[churkin](https://github.com/churkin) |[kirovboris](https://github.com/kirovboris) |[AlexSkorkin](https://github.com/AlexSkorkin) |
+[lzxb](https://github.com/lzxb) |[macdonaldr93](https://github.com/macdonaldr93) |[MargaritaLoseva](https://github.com/MargaritaLoseva) |[Marketionist](https://github.com/Marketionist) |[MatthewNielsen27](https://github.com/MatthewNielsen27) |[mattmanske](https://github.com/mattmanske) |
 
-[<img alt="pietrovich" src="https://avatars2.githubusercontent.com/u/1728613?v=4&s=117" width="117">](https://github.com/pietrovich) |[<img alt="superroma" src="https://avatars0.githubusercontent.com/u/8553464?v=4&s=117" width="117">](https://github.com/superroma) |[<img alt="caseyWebb" src="https://avatars3.githubusercontent.com/u/5419074?v=4&s=117" width="117">](https://github.com/caseyWebb) |[<img alt="intermike" src="https://avatars0.githubusercontent.com/u/10540148?v=4&s=117" width="117">](https://github.com/intermike) |[<img alt="DevSide" src="https://avatars2.githubusercontent.com/u/6873926?v=4&s=117" width="117">](https://github.com/DevSide) |[<img alt="b12031106" src="https://avatars1.githubusercontent.com/u/2063566?v=4&s=117" width="117">](https://github.com/b12031106) |
+[<img alt="mcjim" src="https://avatars0.githubusercontent.com/u/485440?v=4&s=117" width="117">](https://github.com/mcjim) |[<img alt="miherlosev" src="https://avatars2.githubusercontent.com/u/4133518?v=4&s=117" width="117">](https://github.com/miherlosev) |[<img alt="morfey13" src="https://avatars0.githubusercontent.com/u/2048346?v=4&s=117" width="117">](https://github.com/morfey13) |[<img alt="mostlyfabulous" src="https://avatars1.githubusercontent.com/u/15062048?v=4&s=117" width="117">](https://github.com/mostlyfabulous) |[<img alt="murajun1978" src="https://avatars3.githubusercontent.com/u/911903?v=4&s=117" width="117">](https://github.com/murajun1978) |[<img alt="NickCis" src="https://avatars0.githubusercontent.com/u/174561?v=4&s=117" width="117">](https://github.com/NickCis) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[pietrovich](https://github.com/pietrovich) |[superroma](https://github.com/superroma) |[caseyWebb](https://github.com/caseyWebb) |[intermike](https://github.com/intermike) |[DevSide](https://github.com/DevSide) |[b12031106](https://github.com/b12031106) |
+[mcjim](https://github.com/mcjim) |[miherlosev](https://github.com/miherlosev) |[morfey13](https://github.com/morfey13) |[mostlyfabulous](https://github.com/mostlyfabulous) |[murajun1978](https://github.com/murajun1978) |[NickCis](https://github.com/NickCis) |
 
-[<img alt="Marketionist" src="https://avatars2.githubusercontent.com/u/534603?v=4&s=117" width="117">](https://github.com/Marketionist) |[<img alt="Dmitry-Ostashev" src="https://avatars3.githubusercontent.com/u/24777868?v=4&s=117" width="117">](https://github.com/Dmitry-Ostashev) |[<img alt="alexey-lin" src="https://avatars0.githubusercontent.com/u/13483856?v=4&s=117" width="117">](https://github.com/alexey-lin) |[<img alt="cgfarmer4" src="https://avatars3.githubusercontent.com/u/336449?v=4&s=117" width="117">](https://github.com/cgfarmer4) |[<img alt="bill-looby-i" src="https://avatars0.githubusercontent.com/u/51128939?v=4&s=117" width="117">](https://github.com/bill-looby-i) |[<img alt="rbardini" src="https://avatars2.githubusercontent.com/u/874370?v=4&s=117" width="117">](https://github.com/rbardini) |
+[<img alt="danielroe" src="https://avatars1.githubusercontent.com/u/28706372?v=4&s=117" width="117">](https://github.com/danielroe) |[<img alt="Ogurecher" src="https://avatars2.githubusercontent.com/u/28919867?v=4&s=117" width="117">](https://github.com/Ogurecher) |[<img alt="pietrovich" src="https://avatars2.githubusercontent.com/u/1728613?v=4&s=117" width="117">](https://github.com/pietrovich) |[<img alt="radarhere" src="https://avatars2.githubusercontent.com/u/3112309?v=4&s=117" width="117">](https://github.com/radarhere) |[<img alt="raspo" src="https://avatars2.githubusercontent.com/u/927264?v=4&s=117" width="117">](https://github.com/raspo) |[<img alt="rbardini" src="https://avatars1.githubusercontent.com/u/874370?v=4&s=117" width="117">](https://github.com/rbardini) |
 :---: |:---: |:---: |:---: |:---: |:---: |
-[Marketionist](https://github.com/Marketionist) |[Dmitry-Ostashev](https://github.com/Dmitry-Ostashev) |[alexey-lin](https://github.com/alexey-lin) |[cgfarmer4](https://github.com/cgfarmer4) |[bill-looby-i](https://github.com/bill-looby-i) |[rbardini](https://github.com/rbardini) |
+[danielroe](https://github.com/danielroe) |[Ogurecher](https://github.com/Ogurecher) |[pietrovich](https://github.com/pietrovich) |[radarhere](https://github.com/radarhere) |[raspo](https://github.com/raspo) |[rbardini](https://github.com/rbardini) |
 
-[<img alt="macdonaldr93" src="https://avatars2.githubusercontent.com/u/5184848?v=4&s=117" width="117">](https://github.com/macdonaldr93) |[<img alt="alexwybraniec" src="https://avatars3.githubusercontent.com/u/521536?v=4&s=117" width="117">](https://github.com/alexwybraniec) |
-:---: |:---: |
-[macdonaldr93](https://github.com/macdonaldr93) |[alexwybraniec](https://github.com/alexwybraniec) |
+[<img alt="renancouto" src="https://avatars0.githubusercontent.com/u/230893?v=4&s=117" width="117">](https://github.com/renancouto) |[<img alt="sgrillon14" src="https://avatars0.githubusercontent.com/u/5530550?v=4&s=117" width="117">](https://github.com/sgrillon14) |[<img alt="smockle" src="https://avatars1.githubusercontent.com/u/3104489?v=4&s=117" width="117">](https://github.com/smockle) |[<img alt="stefanschenk" src="https://avatars2.githubusercontent.com/u/12391671?v=4&s=117" width="117">](https://github.com/stefanschenk) |[<img alt="superroma" src="https://avatars0.githubusercontent.com/u/8553464?v=4&s=117" width="117">](https://github.com/superroma) |[<img alt="theghostbel" src="https://avatars2.githubusercontent.com/u/482899?v=4&s=117" width="117">](https://github.com/theghostbel) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[renancouto](https://github.com/renancouto) |[sgrillon14](https://github.com/sgrillon14) |[smockle](https://github.com/smockle) |[stefanschenk](https://github.com/stefanschenk) |[superroma](https://github.com/superroma) |[theghostbel](https://github.com/theghostbel) |
+
+[<img alt="timnederhoff" src="https://avatars1.githubusercontent.com/u/12087707?v=4&s=117" width="117">](https://github.com/timnederhoff) |[<img alt="titerman" src="https://avatars3.githubusercontent.com/u/43554315?v=4&s=117" width="117">](https://github.com/titerman) |[<img alt="tobiasbueschel" src="https://avatars3.githubusercontent.com/u/13087421?v=4&s=117" width="117">](https://github.com/tobiasbueschel) |[<img alt="varunkumar" src="https://avatars1.githubusercontent.com/u/509433?v=4&s=117" width="117">](https://github.com/varunkumar) |[<img alt="VasilyStrelyaev" src="https://avatars1.githubusercontent.com/u/11459924?v=4&s=117" width="117">](https://github.com/VasilyStrelyaev) |[<img alt="vitalics" src="https://avatars2.githubusercontent.com/u/8816260?v=4&s=117" width="117">](https://github.com/vitalics) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[timnederhoff](https://github.com/timnederhoff) |[titerman](https://github.com/titerman) |[tobiasbueschel](https://github.com/tobiasbueschel) |[varunkumar](https://github.com/varunkumar) |[VasilyStrelyaev](https://github.com/VasilyStrelyaev) |[vitalics](https://github.com/vitalics) |
+
+[<img alt="Vla8islav" src="https://avatars0.githubusercontent.com/u/1637557?v=4&s=117" width="117">](https://github.com/Vla8islav) |[<img alt="wentwrong" src="https://avatars3.githubusercontent.com/u/26363017?v=4&s=117" width="117">](https://github.com/wentwrong) |[<img alt="intermike" src="https://avatars0.githubusercontent.com/u/10540148?v=4&s=117" width="117">](https://github.com/intermike) |[<img alt="DevSide" src="https://avatars2.githubusercontent.com/u/6873926?v=4&s=117" width="117">](https://github.com/DevSide) |[<img alt="b12031106" src="https://avatars1.githubusercontent.com/u/2063566?v=4&s=117" width="117">](https://github.com/b12031106) |[<img alt="tomashanacek" src="https://avatars2.githubusercontent.com/u/1244486?v=4&s=117" width="117">](https://github.com/tomashanacek) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[Vla8islav](https://github.com/Vla8islav) |[wentwrong](https://github.com/wentwrong) |[intermike](https://github.com/intermike) |[DevSide](https://github.com/DevSide) |[b12031106](https://github.com/b12031106) |[tomashanacek](https://github.com/tomashanacek) |
 
 ## Plugins
 
 TestCafe developers and community members made these plugins:
 
 * **Browser Providers**<br/>
-  Allow you to use TestCafe with cloud browser providers and emulators.
+  Use TestCafe with cloud browser providers and emulators.
   * [SauceLabs provider](https://github.com/DevExpress/testcafe-browser-provider-saucelabs) (by [@AndreyBelym](https://github.com/AndreyBelym))
   * [BrowserStack provider](https://github.com/DevExpress/testcafe-browser-provider-browserstack) (by [@AndreyBelym](https://github.com/AndreyBelym))
   * [CrossBrowserTesting provider](https://github.com/sijosyn/testcafe-browser-provider-crossbrowsertesting) (by [@sijosyn](https://github.com/sijosyn))
   * [LambdaTest provider](https://github.com/LambdaTest/testcafe-browser-provider-lambdatest) (by [@kanhaiya15](https://github.com/kanhaiya15))
   * [Nightmare headless provider](https://github.com/ryx/testcafe-browser-provider-nightmare) (by [@ryx](https://github.com/ryx))
+  * [Testingbot provider](https://github.com/testingbot/testcafe-browser-provider-testingbot) (by [@testingbot](https://github.com/testingbot))
   * [fbsimctl iOS emulator](https://github.com/Ents24/testcafe-browser-provider-fbsimctl) (by [@ents24](https://github.com/Ents24))
   * [Electron](https://github.com/DevExpress/testcafe-browser-provider-electron) (by [@AndreyBelym](https://github.com/AndreyBelym))
   * [Puppeteer](https://github.com/jdobosz/testcafe-browser-provider-puppeteer) (by [@jdobosz](https://github.com/jdobosz))
+  * [Puppeteer Chromium](https://github.com/stefanschenk/testcafe-browser-provider-puppeteer-chromium) (by [@stefanschenk](https://github.com/stefanschenk))
 
 * **Framework-Specific Selectors**<br/>
   Work with page elements in a way that is native to your framework.
@@ -300,6 +304,11 @@ TestCafe developers and community members made these plugins:
 * **ESLint**<br/>
   Use ESLint when writing and editing TestCafe tests.
   * [ESLint plugin](https://github.com/miherlosev/eslint-plugin-testcafe) (by [@miherlosev](https://github.com/miherlosev))
+
+* **Cucumber Support**<br/>
+  Create and run tests that use the Cucumber syntax.
+  * [gherkin-testcafe](https://github.com/kiwigrid/gherkin-testcafe) (by [@kiwigrid](https://github.com/kiwigrid)) - run your Cucumber tests with TestCafe as a backend. Requires [CucumberJS](https://github.com/cucumber/cucumber-js).
+  * [testcafe-cucumber-steps](https://github.com/Marketionist/testcafe-cucumber-steps) (by [@Marketionist](https://github.com/Marketionist)) - provides predefined Cucumber steps for [gherkin-testcafe](https://github.com/kiwigrid/gherkin-testcafe).
 
 ## Different Versions of TestCafe
 

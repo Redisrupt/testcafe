@@ -1,4 +1,4 @@
-import emulatedDevices from 'chrome-emulated-devices-list';
+import { emulatedDevices } from 'device-specs';
 import { pickBy as filterProperties, camelCase } from 'lodash';
 import {
     hasMatch, findMatch, isMatchTrue, getModes, splitEscaped, getPathFromParsedModes, parseConfig
@@ -82,6 +82,7 @@ function getDeviceBasedOptions (deviceName, orientation) {
         orientation = mobile ? 'vertical' : 'horizontal';
 
     return {
+        deviceName:  deviceData.title,
         mobile:      mobile,
         orientation: orientation,
         touch:       deviceData.capabilities.indexOf('touch') >= 0,

@@ -1,25 +1,25 @@
 import path from 'path';
 import { Session } from 'testcafe-hammerhead';
-import { UNSTABLE_NETWORK_MODE_HEADER } from '../browser/connection/unstable-network-mode';
+import TestRun from './';
 
 
 const ACTIVE_SESSIONS_MAP = {};
 const UPLOADS_DIR_NAME = '_uploads_';
 
 export default class SessionController extends Session {
-    constructor (uploadRoots) {
-        super(uploadRoots);
+    constructor (uploadRoots, options) {
+        super(uploadRoots, options);
 
         this.currentTestRun = null;
     }
 
     // Hammerhead payload
-    _getPayloadScript () {
-        return this.currentTestRun._getPayloadScript();
+    async getPayloadScript () {
+        return this.currentTestRun.getPayloadScript();
     }
 
-    _getIframePayloadScript () {
-        return this.currentTestRun._getIframePayloadScript();
+    async getIframePayloadScript () {
+        return this.currentTestRun.getIframePayloadScript();
     }
 
 
@@ -43,14 +43,6 @@ export default class SessionController extends Session {
         return this.currentTestRun.handlePageError(ctx, err);
     }
 
-    onPageRequest (ctx) {
-        const pendingStateSnapshot = this.pendingStateSnapshot;
-
-        super.onPageRequest(ctx);
-
-        if (pendingStateSnapshot && ctx.req.headers[UNSTABLE_NETWORK_MODE_HEADER])
-            this.pendingStateSnapshot = pendingStateSnapshot;
-    }
     // API
     static getSession (testRun) {
         let sessionInfo = ACTIVE_SESSIONS_MAP[testRun.browserConnection.id];
@@ -66,20 +58,25 @@ export default class SessionController extends Session {
             else {
                 const fixtureDir = path.dirname(testRun.test.fixture.path);
 
-                session = new SessionController([
+                const uploadRoots = [
                     path.resolve(UPLOADS_DIR_NAME),
                     path.resolve(fixtureDir, UPLOADS_DIR_NAME),
                     fixtureDir
-                ]);
+                ];
+
+                const options = {
+                    disablePageCaching:   testRun.disablePageCaching,
+                    allowMultipleWindows: TestRun.isMultipleWindowsAllowed(testRun),
+                    requestTimeout:       testRun.requestTimeout
+                };
+
+                if (options.allowMultipleWindows)
+                    options.windowId = testRun.browserConnection.activeWindowId;
+
+                session = new SessionController(uploadRoots, options);
 
                 session.currentTestRun = testRun;
             }
-
-            session.disablePageCaching   = testRun.disablePageCaching;
-            session.allowMultipleWindows = testRun.allowMultipleWindows;
-
-            if (session.allowMultipleWindows)
-                session.pageId = testRun.browserConnection.activePageId;
 
             sessionInfo = {
                 session: session,

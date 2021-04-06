@@ -2,22 +2,23 @@ const { ElementScreenshotOptions } = require('../../../../lib/test-run/commands/
 
 const basicOptions = { speed: 1 };
 
-const mouseOptions = Object.assign({
-    modifiers: {
-        alt:   true,
-        ctrl:  true,
-        meta:  true,
-        shift: true,
-    },
+const offsetOptions = Object.assign({
     offsetX:   1,
     offsetY:   2
 }, basicOptions);
 
+const mouseOptions = Object.assign({
+    modifiers: {
+        alt:   true,
+        ctrl:  true,
+        shift: true,
+    }
+}, offsetOptions);
+
 const clickOptions = Object.assign({ caretPos: 1 }, mouseOptions);
 
 const dragToElementOptions = Object.assign({
-    destinationOffsetX: 3,
-    destinationOffsetY: 4
+    destinationOffsetX: 3
 }, mouseOptions);
 
 const typeTextOptions = Object.assign({
@@ -25,200 +26,435 @@ const typeTextOptions = Object.assign({
     paste:   true
 }, clickOptions);
 
+const scrollOptions = Object.assign({
+    x: 1,
+    y: 2
+}, offsetOptions);
+
 module.exports = [
     {
+        testRunId: 'test-run-id',
         name:    'click',
         command: {
             options:  clickOptions,
-            selector: 'Selector(\'#target\')',
+            selector: { expression: 'Selector(\'#target\')' },
             type:     'click'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'rightClick',
+        testRunId: 'test-run-id',
+        name:    'rightClick',
         command: {
             options:  clickOptions,
-            selector: 'Selector(\'#target\')',
+            selector: { expression:'Selector(\'#target\')' },
             type:     'right-click'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
+        testRunId: 'test-run-id',
         name:    'doubleClick',
         command: {
             options:  clickOptions,
-            selector: 'Selector(\'#target\')',
+            selector: { expression:'Selector(\'#target\')' },
             type:     'double-click'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'hover',
+        testRunId: 'test-run-id',
+        name:    'hover',
         command: {
             options:  mouseOptions,
-            selector: 'Selector(\'#target\')',
+            selector: { expression:'Selector(\'#target\')' },
             type:     'hover'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'drag',
+        testRunId: 'test-run-id',
+        name:    'drag',
         command: {
             options:     mouseOptions,
-            selector:    'Selector(\'#target\')',
+            selector: { expression: 'Selector(\'#target\')' },
             dragOffsetX: 100,
             dragOffsetY: 200,
             type:        'drag'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'dragToElement',
+        testRunId: 'test-run-id',
+        name:    'dragToElement',
         command: {
             options:             dragToElementOptions,
-            selector:            'Selector(\'#target\')',
-            destinationSelector: 'Selector(\'#target\')',
+            selector: { expression: 'Selector(\'#target\')' },
+            destinationSelector: { expression: 'Selector(\'#target\')' },
             type:                'drag-to-element'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'typeText',
+        testRunId: 'test-run-id',
+        name:    'scroll',
+        command: {
+            x:        100,
+            y:        200,
+            position: null,
+            options:  offsetOptions,
+            selector: { expression: 'Selector(\'#target\')' },
+            type:     'scroll'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:    'scrollBy',
+        command: {
+            byX:      100,
+            byY:      200,
+            options:  offsetOptions,
+            selector: { expression: 'Selector(\'#target\')' },
+            type:     'scroll-by'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:    'scrollIntoView',
+        command: {
+            options:  offsetOptions,
+            selector: { expression: 'Selector(\'#target\')' },
+            type:     'scroll-into-view'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:    'typeText',
         command: {
             options:  typeTextOptions,
-            selector: 'Selector(\'#input\')',
+            selector: { expression:'Selector(\'#input\')' },
             text:     'test',
             type:     'type-text'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'selectText',
+        testRunId: 'test-run-id',
+        name:    'selectText',
         command: {
             options:  basicOptions,
-            selector: 'Selector(\'#input\')',
+            selector: { expression:'Selector(\'#input\')' },
             startPos: 1,
             endPos:   3,
             type:     'select-text'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
+        testRunId:   'test-run-id',
         name: 'selectTextAreaContent',
 
         command: {
             options:   basicOptions,
-            selector:  'Selector(\'#textarea\')',
+            selector: { expression: 'Selector(\'#textarea\')' },
             startLine: 1,
             startPos:  2,
             endLine:   3,
             endPos:    4,
             type:      'select-text-area-content'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'selectEditableContent',
+        testRunId: 'test-run-id',
+        name:    'selectEditableContent',
         command: {
             options:       basicOptions,
-            startSelector: 'Selector(\'#contenteditable\')',
-            endSelector:   'Selector(\'#contenteditable\')',
+            startSelector: { expression:'Selector(\'#contenteditable\')' },
+            endSelector:   { expression:  'Selector(\'#contenteditable\')' },
             type:          'select-editable-content'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'pressKey',
+        testRunId: 'test-run-id',
+        name:    'pressKey',
         command: {
             options: basicOptions,
             keys:    'enter',
             type:    'press-key'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
+        testRunId:   'test-run-id',
         name: 'wait',
 
         command: {
             type:    'wait',
             timeout: 1
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'navigateTo',
+        testRunId: 'test-run-id',
+        name:    'navigateTo',
         command: {
             type: 'navigate-to',
             url:  './index.html'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'setFilesToUpload',
+        testRunId: 'test-run-id',
+        name:    'setFilesToUpload',
         command: {
-            selector: 'Selector(\'#file\')',
+            selector: { expression:'Selector(\'#file\')' },
             type:     'set-files-to-upload',
             filePath: '../test.js'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'clearUpload',
+        testRunId: 'test-run-id',
+        name:    'clearUpload',
         command: {
-            selector: 'Selector(\'#file\')',
+            selector: { expression:'Selector(\'#file\')' },
             type:     'clear-upload',
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'takeScreenshot',
+        testRunId: 'test-run-id',
+        name:    'takeScreenshot',
         command: {
             path:     'screenshotPath',
             fullPage: true,
             type:     'take-screenshot',
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'takeElementScreenshot',
+        testRunId: 'test-run-id',
+        name:    'takeElementScreenshot',
         command: {
-            selector: 'Selector(\'#target\')',
+            selector: { expression:'Selector(\'#target\')' },
             path:     'screenshotPath',
             type:     'take-element-screenshot',
-            options:  new ElementScreenshotOptions()
+            options:  {
+                includeMargins: true,
+                crop: {
+                    top: -100
+                }
+            }
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'resizeWindow',
+        testRunId: 'test-run-id',
+        name:    'resizeWindow',
         command: {
             width:  200,
             height: 200,
             type:   'resize-window'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'resizeWindowToFitDevice',
+        testRunId: 'test-run-id',
+        name:    'resizeWindowToFitDevice',
         command: {
             device:  'Sony Xperia Z',
             options: {
@@ -226,100 +462,302 @@ module.exports = [
             },
             type:    'resize-window-to-fit-device'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'maximizeWindow',
+        testRunId: 'test-run-id',
+        name:    'maximizeWindow',
         command: {
             type: 'maximize-window'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'switchToIframe',
+        testRunId: 'test-run-id',
+        name:    'switchToIframe',
         command: {
-            selector: 'Selector(\'#iframe\')',
+            selector: { expression:'Selector(\'#iframe\')' },
             type:     'switch-to-iframe'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'switchToMainWindow',
+        testRunId: 'test-run-id',
+        name:    'switchToMainWindow',
         command: {
             type: 'switch-to-main-window'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name:      'setNativeDialogHandler',
+        testRunId: 'test-run-id',
+        name:    'openWindow',
         command: {
-            dialogHandler: {
-                args: [],
-                code: '(function(){ return (function () {return true;});})();'
-            },
-            type:          'set-native-dialog-handler'
+            type: 'open-window',
+            url:  'http://example.com'
         },
-        test:      { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:    'switchToWindow',
+        command: {
+            type:     'switch-to-window',
+            windowId: 'window-id'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:    'closeWindow',
+        command: {
+            type:     'close-window',
+            windowId: 'window-id'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:    'getCurrentWindow',
+        command: {
+            type: 'get-current-window'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:    'switchToParentWindow',
+        command: {
+            type: 'switch-to-parent-window'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
+        name:      'switchToPreviousWindow',
+        command:   {
+            type: 'switch-to-previous-window'
+        },
+        test:      {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture:   {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser:   { alias: 'test-browser', headless: false }
     },
     {
+        testRunId: 'test-run-id',
+        name:    'setNativeDialogHandler',
+        command: {
+            dialogHandler: {
+                args: [],
+                code: '(function(){ var func = function func() {return true;}; return func;})();'
+            },
+            type: 'set-native-dialog-handler'
+        },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
+        browser: { alias: 'test-browser', headless: false }
+    },
+    {
+        testRunId: 'test-run-id',
         name:    'getNativeDialogHistory',
         command: {
             type: 'get-native-dialog-history'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'getBrowserConsoleMessages',
+        testRunId: 'test-run-id',
+        name:    'getBrowserConsoleMessages',
         command: {
             type: 'get-browser-console-messages',
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
+        testRunId: 'test-run-id',
         name:    'debug',
         command: {
             type: 'debug'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
-
     },
     {
-        name: 'setTestSpeed',
+        testRunId: 'test-run-id',
+        name:    'setTestSpeed',
         command: {
             speed: 1,
             type:  'set-test-speed'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
-        name: 'setPageLoadTimeout',
+        testRunId: 'test-run-id',
+        name:    'setPageLoadTimeout',
         command: {
             duration: 1,
             type:     'set-page-load-timeout'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     },
     {
+        testRunId: 'test-run-id',
         name:    'useRole',
         command: {
             role: {
-                loginPage: 'http://example.com',
-                options:   { preserveUrl: true },
-                phase:     'uninitialized'
+                loginUrl: 'http://example.com',
+                options:  { preserveUrl: true },
+                phase:    'uninitialized'
             },
             type: 'useRole'
         },
-        test:    { name: 'test-name', phase: 'initial' },
+        test:    {
+            id:    'test-id',
+            name:  'test-name',
+            phase: 'initial'
+        },
+        fixture: {
+            id:   'fixture-id',
+            name: 'fixture-name',
+        },
         browser: { alias: 'test-browser', headless: false }
     }
 ];

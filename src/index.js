@@ -4,6 +4,7 @@ import embeddingUtils from './embedding-utils';
 import exportableLib from './api/exportable-lib';
 import TestCafeConfiguration from './configuration/testcafe-configuration';
 import OPTION_NAMES from './configuration/option-names';
+import ProcessTitle from './services/process-title';
 
 const lazyRequire   = require('import-lazy')(require);
 const TestCafe      = lazyRequire('./testcafe');
@@ -38,19 +39,40 @@ async function getValidPort (port) {
 }
 
 // API
-async function createTestCafe (hostname, port1, port2, sslOptions, developmentMode, retryTestPages) {
-    const configuration = new TestCafeConfiguration();
+async function getConfiguration (args) {
+    let configuration;
 
-    await configuration.init({
-        hostname,
-        port1,
-        port2,
-        ssl: sslOptions,
-        developmentMode,
-        retryTestPages
-    });
+    if (args.length === 1 && typeof args[0] === 'object') {
+        configuration = new TestCafeConfiguration(args[0]?.configFile);
 
-    [hostname, port1, port2] = await Promise.all([
+        await configuration.init(args[0]);
+    }
+    else {
+        const [hostname, port1, port2, ssl, developmentMode, retryTestPages, cache, configFile] = args;
+
+        configuration = new TestCafeConfiguration(configFile);
+
+        await configuration.init({
+            hostname,
+            port1,
+            port2,
+            ssl,
+            developmentMode,
+            retryTestPages,
+            cache
+        });
+    }
+
+    return configuration;
+}
+
+// API
+async function createTestCafe (...args) {
+    process.title = ProcessTitle.main;
+
+    const configuration = await getConfiguration(args);
+
+    const [hostname, port1, port2] = await Promise.all([
         getValidHostname(configuration.getOption(OPTION_NAMES.hostname)),
         getValidPort(configuration.getOption(OPTION_NAMES.port1)),
         getValidPort(configuration.getOption(OPTION_NAMES.port2))

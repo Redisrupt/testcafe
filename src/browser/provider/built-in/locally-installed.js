@@ -1,6 +1,5 @@
 import browserTools from 'testcafe-browser-tools';
 
-
 export default {
     isMultiBrowser: true,
 
