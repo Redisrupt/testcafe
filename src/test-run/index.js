@@ -392,7 +392,7 @@ export default class TestRun extends AsyncEventEmitter {
     }
 
     // Test function execution
-    async _executeTestFn (phase, fn, { storeError = true } = {}) {
+    async _executeTestFn (phase, fn) {
         this.phase = phase;
 
         try {

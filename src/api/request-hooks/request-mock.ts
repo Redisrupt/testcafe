@@ -52,6 +52,7 @@ class RequestMock extends RequestHook {
         const mock = new ResponseMock(body, statusCode, headers);
         const rule = new RequestFilterRule(this._pendingRequestFilterRuleInit);
 
+        // @ts-ignore
         this._requestFilterRules.push(rule);
         this._mocks.set(rule, mock);
 

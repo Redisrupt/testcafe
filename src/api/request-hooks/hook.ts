@@ -19,6 +19,7 @@ export default abstract class RequestHook {
     public id: string;
 
     protected constructor (ruleInit?: RequestFilterRuleInit | RequestFilterRuleInit[], responseEventConfigureOpts?: ConfigureResponseEventOptions) {
+        // @ts-ignore
         this._requestFilterRules         = this._prepareRules(ruleInit);
         this._responseEventConfigureOpts = responseEventConfigureOpts;
         this._warningLog                 = null;

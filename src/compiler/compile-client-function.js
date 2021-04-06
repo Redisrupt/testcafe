@@ -5,7 +5,7 @@ import { noop } from 'lodash';
 import { ClientFunctionAPIError } from '../errors/runtime';
 import { RUNTIME_ERRORS } from '../errors/types';
 import formatBabelProducedCode from './babel/format-babel-produced-code';
-import BASE_BABEL_OPTIONS from './babel/get-base-babel-options';
+// import BASE_BABEL_OPTIONS from './babel/get-base-babel-options';
 
 const ANONYMOUS_FN_RE                = /^function\s*\*?\s*\(/;
 const ES6_OBJ_METHOD_NAME_RE         = /^(\S+?)\s*\(/;

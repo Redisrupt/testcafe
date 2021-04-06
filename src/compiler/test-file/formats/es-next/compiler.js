@@ -3,20 +3,20 @@ import APIBasedTestFileCompilerBase from '../../api-based';
 import isFlowCode from './is-flow-code';
 import BASE_BABEL_OPTIONS from '../../../babel/get-base-babel-options';
 
-const path = require('path');
+// const path = require('path');
 
-const tryRequire = module => {
-    let mod;
+// const tryRequire = module => {
+//     let mod;
 
-    try {
-        mod = require(module);
-    }
-    catch (err) {
-        /*  */
-    }
+//     try {
+//         mod = require(module);
+//     }
+//     catch (err) {
+//         /*  */
+//     }
 
-    return mod;
-};
+//     return mod;
+// };
 
 export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase {
     static getBabelOptions (filename, code) {
@@ -50,7 +50,7 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
         const babel = require('@babel/core');
         const isTS = /\.ts$/.test(filename);
 
-        let opts = {
+        const opts = {
             filename:      filename,
             retainLines:   true,
             sourceMaps:    'inline',
@@ -102,62 +102,6 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
             ignore: ['node_modules/**/*.js'],
         };
 
-    canCompile (source, filename) {
-        return !!filename.match(/\.ts$|\.js$/);
-    }
-
-    _compileCode (code, filename) {
-        const babel = require('@babel/core');
-        const opts = {
-            filename:      filename,
-            retainLines:   true,
-            sourceMaps:    'inline',
-            ast:           false,
-            babelrc:       false,
-            highlightCode: false,
-            presets:       [
-                [
-                    '@babel/preset-env',
-                    {
-                        loose:   true,
-                        targets: {
-                            node: '6',
-                        },
-                    },
-                ],
-                '@babel/preset-typescript',
-                '@babel/preset-react',
-            ],
-            plugins: [
-                ['babel-plugin-module-resolver', {
-                    'resolvePath': source => {
-                        if (source === 'testcafe')
-                            return APIBasedTestFileCompilerBase.EXPORTABLE_LIB_PATH;
-                        return source;
-                    }
-                }],
-                [
-                    '@babel/plugin-proposal-decorators',
-                    {
-                        legacy: true,
-                    },
-                ],
-                [
-                    '@babel/plugin-proposal-class-properties',
-                    {
-                        loose: true,
-                    },
-                ],
-                '@babel/plugin-transform-runtime',
-                '@babel/plugin-proposal-do-expressions',
-                '@babel/plugin-proposal-export-default-from',
-                '@babel/plugin-proposal-export-namespace-from',
-                '@babel/plugin-proposal-object-rest-spread',
-                '@babel/plugin-proposal-optional-chaining',
-            ],
-            ignore: ['node_modules/**/*.js'],
-        };
-
         if (this.cache[filename])
             return this.cache[filename];
 
@@ -166,6 +110,7 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
         this.cache[filename] = compiled.code;
 
         return compiled.code;
+
     }
 
     _getRequireCompilers () {
