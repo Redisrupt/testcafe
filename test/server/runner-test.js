@@ -687,9 +687,7 @@ describe('Runner', () => {
                     throw new Error('Promise rejection expected');
                 })
                 .catch(err => {
-                    expect(err.message).eql('The Chrome 41.0.2227.1 / macOS 10.10.1 browser disconnected. ' +
-                                            'This problem may appear when a browser hangs or is closed, ' +
-                                            'or due to network issues.');
+                    expect(err.message).eql('The Chrome 41.0.2227.1 / macOS 10.10.1 browser disconnected. This problem may appear when a browser hangs or is closed, or due to network issues.');
                 });
         });
 

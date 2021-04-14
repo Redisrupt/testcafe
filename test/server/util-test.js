@@ -81,6 +81,30 @@ describe('Utils', () => {
                 expected: expectedEmptyParsedUA
             },
             {
+                sourceUA: 'Chrome',
+                expected: {
+                    name:            'Chrome',
+                    version:         '0.0',
+                    platform:        'other',
+                    os:              { name: 'Other', version: '0.0' },
+                    engine:          { name: 'Other', version: '0.0' },
+                    prettyUserAgent: 'Chrome 0.0 / Other 0.0',
+                    userAgent:       'Chrome'
+                }
+            },
+            {
+                sourceUA: 'AppleWebKit',
+                expected: {
+                    name:            'Safari',
+                    version:         '0.0',
+                    platform:        'other',
+                    os:              { name: 'Other', version: '0.0' },
+                    engine:          { name: 'WebKit', version: '0.0' },
+                    prettyUserAgent: 'Safari 0.0 / Other 0.0',
+                    userAgent:       'AppleWebKit'
+                }
+            },
+            {
                 sourceUA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36',
                 expected: {
                     name:            'Chrome',

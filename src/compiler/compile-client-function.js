@@ -1,7 +1,7 @@
 import hammerhead from 'testcafe-hammerhead';
 import asyncToGenerator from 'babel-runtime/helpers/asyncToGenerator';
 import { noop } from 'lodash';
-import loadBabelLibs from './load-babel-libs';
+// import loadBabelLibs from './load-babel-libs';
 import { ClientFunctionAPIError } from '../errors/runtime';
 import { RUNTIME_ERRORS } from '../errors/types';
 
@@ -9,7 +9,7 @@ const ANONYMOUS_FN_RE                = /^function\s*\*?\s*\(/;
 const ES6_OBJ_METHOD_NAME_RE         = /^(\S+?)\s*\(/;
 const USE_STRICT_RE                  = /^('|")use strict('|");?/;
 const TRAILING_SEMICOLON_RE          = /;\s*$/;
-const REGENERATOR_FOOTPRINTS_RE      = /(_index\d+\.default|_regenerator\d+\.default|regeneratorRuntime)\.wrap\(function _callee\$\(_context\)/;
+const REGENERATOR_FOOTPRINTS_RE      = /asyncGeneratorStep|(_index\d+\.default|_regenerator\d+\.default|regeneratorRuntime)\.wrap\(function _callee\$\(_context\)/;
 const ASYNC_TO_GENERATOR_OUTPUT_CODE = asyncToGenerator(noop).toString();
 
 const babelArtifactPolyfills = {
@@ -34,20 +34,40 @@ const babelArtifactPolyfills = {
 
 
 function getBabelOptions () {
-    const { presetFallback, transformForOfAsArray } = loadBabelLibs();
+    // const { presetFallback, transformForOfAsArray } = loadBabelLibs();
 
+    // return {
+    //     presets:       [{ plugins: [transformForOfAsArray] }, presetFallback],
+    //     sourceMaps:    false,
+    //     retainLines:   true,
+    //     ast:           false,
+    //     babelrc:       false,
+    //     highlightCode: false
+    // };
     return {
-        presets:       [{ plugins: [transformForOfAsArray] }, presetFallback],
         sourceMaps:    false,
         retainLines:   true,
         ast:           false,
         babelrc:       false,
-        highlightCode: false
+        configFile:    false,
+        highlightCode: false,
+        presets:       [
+            [
+                '@babel/preset-env',
+                {
+                    loose:   true,
+                    targets: {
+                        browsers: ['last 2 versions']
+                    },
+                },
+            ],
+            '@babel/preset-react',
+        ],
     };
 }
 
 function downgradeES (fnCode) {
-    const { babel } = loadBabelLibs();
+    const babel = require('@babel/core');
 
     const opts     = getBabelOptions();
     const compiled = babel.transform(fnCode, opts);

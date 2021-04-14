@@ -1,7 +1,7 @@
 const semver = require('semver');
 
 const DEFAULT_TAG     = 'latest';
-const VALID_TAGS_LIST = [DEFAULT_TAG, 'alpha', 'rc'];
+const VALID_TAGS_LIST = [DEFAULT_TAG, 'alpha', 'rc', 'reva'];
 
 module.exports = function getPublishTags (packageInfo) {
     const tag = semver.parse(packageInfo.version).prerelease[0] || DEFAULT_TAG;
